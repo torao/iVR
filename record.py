@@ -1,3 +1,5 @@
+# python3 record.py 2> /dev/null &
+# 
 import os
 import subprocess
 import datetime
@@ -6,10 +8,14 @@ TEMP_DIR = '/tmp'           # RAM disk is preferred for frequent writes
 MOVIE_DIR = '/mnt/usb01'    # directory whre recorded video files are stored
 
 
-def main():
+def start_recording():
+
+    # calculate the number of seconds remaining in this hour
+    now = datetime.datetime.now()
+    end = datetime.datetime(now.year, now.month, now.day, now.hour + 1, 0, 0)
+    interval = (end - now).seconds
 
     # determine unique filename
-    now = datetime.datetime.now()
     i = 0
     while True:
         date = now.strftime('%Y%m%d.%H')
@@ -20,20 +26,28 @@ def main():
             break
         i += 1
 
+    telop = [
+        'format=yuv420p',
+        'drawbox=y=ih-20:w=iw:h=20:t=fill:color=black@0.4',
+        'drawtext=\'text=%{localtime\\:%F %T}:fontsize=16:fontcolor=#DDDDDD:x=4:y=h-17\'',
+        'drawtext=textfile=/tmp/telop.txt:fontsize=16:reload=1:fontcolor=#DDDDDD:x=180:y=h-17'
+    ]
     command = [
         'ffmpeg',
+        '-nostdin',
         '-f', 'v4l2', '-thread_queue_size', '8192', '-s', '640x480', '-framerate', '30','-i', '/dev/video0',
         '-f', 'alsa', '-ac', '1', '-i', 'hw:1,0',
+        '-vf', ','.join(telop),
         '-c:v', 'h264_v4l2m2m', '-b:v', '768k',
-        '-t', '60',
+        '-t', str(interval),
         '-movflags', '+faststart', '-bufsize', '10M',
-        # '-f', 'segments', '-flags', '+global_header',
-        # '-segment_format_options', 'movflags=+faststart', '-reset_timestamps', '1', '-segment_time', '3600',
         output
     ]
     result = subprocess.run(command)
     print("exit process: %s" % result)
+    print("recorded the footage: %s" % output)
 
 
 if __name__ == '__main__':
-    main()
+    while True:
+        start_recording()
