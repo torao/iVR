@@ -1,0 +1,50 @@
+- hosts: all
+  gather_facts: no
+  remote_user: pi
+  vars:
+    ivr_home: /opt/ivr
+  tasks:
+  # - name: Update apt repositories
+  #   apt:
+  #     update_cache: yes
+  #   become: true
+  # - name: Upgrade local libraries
+  #   apt:
+  #     upgrade: yes
+  #   become: true
+  # - name: Install tools and libraries
+  #   apt:
+  #     name:
+  #       - fswebcam
+  #       - ffmpeg
+  #       - gpsd
+  #       - gpsd-clients
+  #     state: present
+  #   become: true
+  # - name: Configure /tmp to be mounted with tmpfs
+  #   ansible.posix.mount:
+  #     src: tmpfs
+  #     path: /tmp
+  #     opts: defaults,size=32m
+  #     state: mounted
+  #     fstype: tmpfs
+  # - name: Create a home directory and related directories
+  #   file:
+  #     path: "{{item}}"
+  #     state: directory
+  #     owner: pi
+  #     group: pi
+  #     mode: 0755
+  #   loop:
+  #     - "{{ivr_home}}"
+  #     - "{{ivr_home}}/bin"
+  #   become: true
+  - name: Copy the executable files
+    copy:
+      src: "{{item}}"
+      dest: "{{ivr_home}}/bin"
+      mode: 0755
+    with_fileglob:
+      - "files/bin/*.py"
+      - "files/bin/*.sh"
+
