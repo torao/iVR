@@ -1,3 +1,4 @@
+# ansible-playbook -i hosts site.yml
 - hosts: all
   gather_facts: yes
   remote_user: pi
@@ -23,8 +24,13 @@
   #       - ffmpeg
   #       - gpsd
   #       - gpsd-clients
+  #       - python3-pip
   #     state: present
   #   become: true
+  # - name: Install Python libraries
+  #   pip:
+  #     name:
+  #       - gps3
 
   # # *******************************
   # - name: Configure /tmp to be mounted with tmpfs
