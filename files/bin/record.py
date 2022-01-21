@@ -6,8 +6,10 @@ import datetime
 import sys
 import re
 
-TEMP_DIR = "/tmp"  # tmpfs (RAM disk) is preferred for frequent writes
-MOVIE_DIR = "/mnt/usb01"  # directory whre recorded video files are stored
+TEMP_DIR = "/opt/ivr/tmp"  # tmpfs (RAM disk) is preferred for frequent writes
+FOOTAGE_DIR = "/opt/ivr/data"  # directory whre recorded video files are stored
+TELOP_FILE = os.path.join(TEMP_DIR, "telop.txt")
+TYPICAL_SIZE_OF_FOOTAGE_FILE = 360 * 1024 * 1024
 
 
 def start_recording():
@@ -20,10 +22,8 @@ def start_recording():
     # determine unique filename
     i = 0
     while True:
-        date = now.strftime("%Y%m%d.%H")
-        sequence = "" if i == 0 else (".%d" % i)
-        file_name = "output-%s%s.mp4" % (date, sequence)
-        output = os.path.join(MOVIE_DIR, file_name)
+        file_name = footage_file_name(now, i)
+        output = os.path.join(FOOTAGE_DIR, file_name)
         if not os.path.exists(output):
             break
         i += 1
@@ -37,6 +37,8 @@ def start_recording():
     command = [
         "ffmpeg",
         "-nostdin",
+        "-flush_packets",
+        "1",
         "-f",
         "v4l2",
         "-thread_queue_size",
@@ -131,12 +133,67 @@ def detect_default_usb_audio():
     return None
 
 
+# Remove the oldest data first to reduce it below the maximum capacity if the total size of the
+# video files in the directory exceeds the maximum capacity.
+def cleanup(dir, max_capacity):
+    files = []
+    total_size = 0
+    max_size = TYPICAL_SIZE_OF_FOOTAGE_FILE
+    for file in os.listdir(dir):
+        ds = date_and_sequence_of_footage_file(file)
+        if ds is not None:
+            size = os.path.getsize(file)
+            total_size += size
+            max_size = max(max_size, size)
+            files.append((ds[0], ds[1], file, size))
+    files = sorted(files)
+    # The size that is assumed not to exceed the max_capacity even if a footage is added.
+    limited_capacity = max_capacity - max_size
+    while total_size > limited_capacity and len(files) > 0:
+        file = files[0][2]
+        size = files[0][3]
+        os.remove(file)
+        total_size -= size
+        print("footage file removed: %s" % file)
+
+
+# Returns the recording date and sequence number if the file is a video file recorded by IVR.
+# If the file isn't a video, returns None.
+def date_and_sequence_of_footage_file(file):
+    file_pattern = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.mp4"
+    if os.path.isfile(file):
+        matcher = re.fullmatch(file_pattern, os.path.basename(file))
+        if matcher is not None:
+            date = datetime.datetime(
+                int(matcher[1]), int(matcher[2]), int(matcher[3]), int(matcher[4])
+            )
+            seq = 0 if len(matcher) < 7 else int(matcher[6])
+            return (date, seq)
+    return None
+
+
+# Generate a footage file name from the specified date and sequence number.
+def footage_file_name(date, sequence):
+    date_part = date.strftime("%Y%m%d.%H")
+    seq_part = "" if sequence == 0 else (".%d" % sequence)
+    return "footage-%s%s.mp4" % (date_part, seq_part)
+
+
 def main():
+    footage_dir = FOOTAGE_DIR
+    max_capacity = 1024 * 1024 * 1024
+
     dev_video = detect_default_usb_camera()
     dev_audio = detect_default_usb_audio()
     print(dev_video, dev_audio)
-    # while True:
-    #     start_recording()
+
+    telop_file = TELOP_FILE
+    with open(telop_file, mode="w") as f:
+        f.write("E*****/W*****")
+
+    while True:
+        cleanup(footage_dir, max_capacity)
+        start_recording()
 
 
 if __name__ == "__main__":

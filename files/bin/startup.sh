@@ -9,4 +9,4 @@
 # The appropriate device can be found by `arecord --list-devices`.
 #DEVICE_AUDIO=1,0
 
-python $(dirname $0)/bin/record.py 2> /dev/null &
+python $(dirname $0)/record.py 2>> $(dirname $0)/stderr.log >> $(dirname $0)/stdout.log &

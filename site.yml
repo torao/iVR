@@ -1,8 +1,12 @@
 - hosts: all
-  gather_facts: no
+  gather_facts: yes
   remote_user: pi
   vars:
     ivr_home: /opt/ivr
+    storage_uuid: "{{ansible_facts['devices']['sda']['partitions']['sda1']['uuid']}}"
+    storage_size: "{{ansible_facts['devices']['sda']['partitions']['sda1']['size']}}"
+    storage_vendor: "{{ansible_facts['devices']['sda']['vendor']}}"
+    storage_model: "{{ansible_facts['devices']['sda']['model']}}"
   tasks:
   # - name: Update apt repositories
   #   apt:
@@ -21,6 +25,8 @@
   #       - gpsd-clients
   #     state: present
   #   become: true
+
+  # # *******************************
   # - name: Configure /tmp to be mounted with tmpfs
   #   ansible.posix.mount:
   #     src: tmpfs
@@ -28,17 +34,55 @@
   #     opts: defaults,size=32m
   #     state: mounted
   #     fstype: tmpfs
-  # - name: Create a home directory and related directories
+
+  # # *******************************
+  # - name: "Make sure that the USB storage is attached to /dev/sda1"
+  #   assert:
+  #     that:
+  #       - storage_uuid != ""
+  #     fail_msg: "The data storage cannot be detected as /dev/sda1, please connect a USB storage device."
+  #     success_msg: "Use the storage {{storage_vendor}} {{storage_model}} {{storage_size}} detected in /dev/sda1."
+  # - name: "Configure auto-mount: /dev/disk/by-uuid/{{storage_uuid}} => {{ivr_home}}/data"
+  #   copy:
+  #     content: "{{item.content}}"
+  #     dest: "{{item.dest}}"
+  #   with_items:
+  #     # NOTE: The directory pointed to by *.autofs will be forced to be root:root and no files or
+  #     # directories can be created. Don't specifiy {{ivr_home}} for this reason.
+  #     - { content: "/mnt /etc/auto.mnt", dest: "/etc/auto.master.d/mnt.autofs" }
+  #     - { content: "sda1 -fstype=exfat,rw,umask=000 :/dev/disk/by-uuid/{{storage_uuid}}", dest: "/etc/auto.mnt" }
+  #   become: true
+  #   register: result
+  # - name: "Restart autofs"
+  #   shell: 
+  #     cmd: "systemctl restart autofs --now"
+  #   become: true
+  #   when: 
+  #     - result.changed
+
+  # # *******************************
+  # - name: Create the home directory and related directories
   #   file:
   #     path: "{{item}}"
   #     state: directory
   #     owner: pi
   #     group: pi
   #     mode: 0755
+  #   become: true
   #   loop:
   #     - "{{ivr_home}}"
   #     - "{{ivr_home}}/bin"
+  # - name: Create symbolic links
+  #   file:
+  #     path: "{{item.path}}"
+  #     src: "{{item.src}}"
+  #     state: link
   #   become: true
+  #   loop:
+  #     - { path: "{{ivr_home}}/tmp", src: /tmp }
+  #     - { path: "{{ivr_home}}/data", src: /mnt/sda1 }
+
+  # *******************************
   - name: Copy the executable files
     copy:
       src: "{{item}}"
