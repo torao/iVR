@@ -13,24 +13,21 @@ import ivr
 # Real-time recording format: mkv, mp4, avi
 FOOTAGE_FILE_EXT = "avi"
 
+# Archived footage file extension
+ARCHIVED_FOOTAGE_FILE_EXT = "mp4"
+
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
 def start_camera_recording(dev_video, dev_audio, telop_file, dir):
+
+    # determine unique file name
+    output = new_footage_file(dir, datetime.datetime.now(), FOOTAGE_FILE_EXT)
 
     # calculate the number of seconds remaining in this hour
     delta = datetime.timedelta(hours=1)
     now = datetime.datetime.now()
     end = datetime.datetime(now.year, now.month, now.day, now.hour) + delta
     interval = (end - now).seconds
-
-    # determine unique filename
-    i = 0
-    while True:
-        file_name = ivr.footage_file_name(now, i, FOOTAGE_FILE_EXT)
-        output = os.path.join(dir, file_name)
-        if not os.path.exists(output):
-            break
-        i += 1
     t1 = now.strftime("%F %T")
     t2 = end.time()
     ivr.log(
@@ -97,6 +94,20 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     return (result.returncode, output)
 
 
+# Create a new file name based on the specified datetime that doesn't overlap with any existing
+# footage file.
+# Note that you need to consider the case where an AVI file for a certan date and sequence has
+# already been converted to MP3 and removed.
+def new_footage_file(dir, now, ext):
+    exts = list({ext, ARCHIVED_FOOTAGE_FILE_EXT})
+    i = 0
+    while True:
+        file_names = [ivr.footage_file_name(now, i, ext) for ext in exts]
+        if not any([os.path.exists(os.path.join(dir, f)) for f in file_names]):
+            return os.path.join(dir, ivr.footage_file_name(now, i, ext))
+        i += 1
+
+
 # Returns the device with the lowest number among the USB connected video devices from captured
 # video device list using v4l2-ctl --list-devices.
 # If no such device was detected, returns `None`.
@@ -158,12 +169,28 @@ def detect_default_usb_audio():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Save the footage from USB camera")
-    parser.add_argument("dir", help="Directory where footage files are stored")
     parser.add_argument(
-        "telop", help="File that contains text to overlay on the footage"
+        "-d",
+        "--dir",
+        metavar="DIR",
+        default=ivr.data_dir(),
+        help="Directory where footage files are stored (default: {})".format(
+            ivr.data_dir()
+        ),
     )
     parser.add_argument(
-        "-v", "--video", help="Camera device to be used, such as /dev/video0"
+        "-t",
+        "--telop",
+        metavar="FILE",
+        default=ivr.telop_file(),
+        help="File that contains text to overlay on the footage (default: {})".format(
+            ivr.telop_file()
+        ),
+    )
+    parser.add_argument(
+        "-v",
+        "--video",
+        help="Camera device to be used, such as /dev/video0 (default: auto detect)",
     )
 
     args = parser.parse_args()
@@ -173,12 +200,12 @@ if __name__ == "__main__":
 
     if dev_video is None:
         dev_video_title, dev_video = detect_default_usb_camera()
-        ivr.log("Detected USB camera: {} = {}".format(dev_video, dev_video_title))
+        ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
     dev_autio_title, dev_audio = detect_default_usb_audio()
-    ivr.log("Detected Audio: {} = {}".format(dev_audio, dev_autio_title))
+    ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
 
     ivr.beep("IVR starts to recording.")
     while True:
         ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
         ivr.beep("The recording has been switched with return code {}.".format(ret))
-        ivr.log("END: {} -> {}".format(ret, file))
+        ivr.log("end recording: {} -> {}".format(ret, file))

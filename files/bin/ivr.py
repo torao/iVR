@@ -17,6 +17,34 @@ def is_in_recording(file):
     return ext == ".mkv" or ext == ".avi"
 
 
+AUXILIARY_UNITS = ["", "k", "M", "G", "T", "P"]
+
+# Return the specified integer as a string with auxiliary units of kMGTP.
+def with_aux_unit(num):
+    for i in range(len(AUXILIARY_UNITS)):
+        if num <= 1024 or i + 1 == len(AUXILIARY_UNITS):
+            unit = AUXILIARY_UNITS[i]
+            break
+        num /= 1024
+    if len(unit) == 0:
+        return "{:,d}".format(num)
+    return "{:,.1f}{}".format(num, unit)
+
+
+# Convert a string with kMGTP auxiliary units to a numeric value.
+# An error will occur if the conversion fails.
+def without_aux_unit(num):
+    if len(num) == 0 or num[-1].isdigit():
+        return float(num)
+    multi = 1024
+    for i in range(1, len(AUXILIARY_UNITS)):
+        if num[-1].upper() == AUXILIARY_UNITS[i].upper():
+            num = num[:-1]
+            break
+        multi *= 1024
+    return float(num.replace(",", "")) * multi
+
+
 # Returns the recording date and sequence number if the file is a video file recorded by IVR.
 # If the file doesn't exist or isn't a footage video, returns None.
 def date_of_footage_file(file):
@@ -92,3 +120,8 @@ def temp_dir():
 # Refer to the data directory.
 def data_dir():
     return os.path.join(home_dir(), "data")
+
+
+# Refer to the text file to overlay on the footage
+def telop_file():
+    return os.path.join(temp_dir(), "telop.txt")

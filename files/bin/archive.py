@@ -94,15 +94,27 @@ def archive_footage_files(dir, limit):
         ext = ivr.file_extension(file)
         size = os.path.getsize(file)
         if ivr.is_in_recording(file):
-            ivr.log("start to convert file: {}".format(file))
+            t0 = datetime.datetime.now()
             mp4_file = convert_wip_to_mp4(file)
             if mp4_file is not None:
+                t1 = datetime.datetime.now()
                 remove(file)
-                total_size += os.path.getsize(mp4_file)
+                dest_size = os.path.getsize(mp4_file)
+                total_size += dest_size
                 files.pop(0)
                 converted = True
+
+                # output to log
                 mp4_name = os.path.basename(mp4_file)
-                ivr.log("file converted: {} -> {}".format(file, mp4_name))
+                effect = dest_size / size
+                src_size = ivr.with_aux_unit(size)
+                dest_size = ivr.with_aux_unit(dest_size)
+                interval = (t1 - t0).seconds
+                ivr.log(
+                    "the file has been migrated: {} ({}B) -> {} ({}B: {:.1%}); {}sec".format(
+                        file, src_size, mp4_name, dest_size, effect, interval
+                    )
+                )
                 continue
             else:
                 ivr.log("fail to convert to MP4: {}".format(file))
@@ -122,41 +134,33 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Convert and remove recorded footage files"
     )
-    parser.add_argument("dir", help="Directory of footage files")
     parser.add_argument(
-        "limit", default="32G", help="Total file size limit (32G, 32000M, etc.)"
+        "-d",
+        "--dir",
+        metavar="DIR",
+        default=ivr.data_dir(),
+        help="Directory of footage files (default: {})".format(ivr.data_dir()),
+    )
+    parser.add_argument(
+        "-l",
+        "--limit",
+        metavar="CAPACITY",
+        default="32G",
+        help="Maximum total size of files to be saved, such as 32G, 32000M (default: 32G)",
     )
     parser.add_argument(
         "-i",
         "--interval",
+        metavar="SECONDS",
         type=int,
         default=20,
-        help="Interval at which to monitor the directory",
+        help="Interval at which to monitor the directory (default: 20 sec)",
     )
 
     args = parser.parse_args()
     dir = args.dir
-    limit = args.limit
+    limit = ivr.without_aux_unit(args.limit)
     interval = args.interval
-
-    multi = 1
-    if len(limit) > 0 and not limit[-1].isdigit():
-        if limit[-1].upper() == "K":
-            multi = 1000
-            limit = limit[:-1]
-        elif limit[-1].upper() == "M":
-            multi = 1000 * 1000
-            limit = limit[:-1]
-        elif limit[-1].upper() == "G":
-            multi = 1000 * 1000 * 1000
-            limit = limit[:-1]
-        elif limit[-1].upper() == "T":
-            multi = 1000 * 1000 * 1000 * 1000
-            limit = limit[:-1]
-        elif limit[-1].upper() == "P":
-            multi = 1000 * 1000 * 1000 * 1000 * 1000
-            limit = limit[:-1]
-    limit = float(limit) * multi
 
     while True:
         converted = archive_footage_files(dir, limit)

@@ -118,7 +118,9 @@ def position(socket):
 
 # Start GPS positioning.
 # This function writes the information obtained from the GPS to the specified file.
-def start_gps_recording(file, interval):
+def start_gps_recording(file):
+    ivr.log("start gps logging service: {}".format(file))
+
     def write(text):
         temp_file = "{}.tmp".format(file)
         with open(temp_file, mode="w") as f:
@@ -156,15 +158,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="GPS positioning and storing process for IVR"
     )
-    parser.add_argument("file", help="Destination file name")
     parser.add_argument(
-        "-i",
-        "--interval",
-        type=float,
-        default=0.5,
-        help="Positioning interval by seconds",
+        "file",
+        nargs="?",
+        default=ivr.telop_file(),
+        help="Destination file name (default: {})".format(ivr.telop_file()),
     )
     args = parser.parse_args()
     file = args.file
-    interval = args.interval
-    start_gps_recording(file, interval)
+    start_gps_recording(file)
