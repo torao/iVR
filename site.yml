@@ -25,12 +25,14 @@
   #       - gpsd
   #       - gpsd-clients
   #       - python3-pip
+  #       - espeak
   #     state: present
   #   become: true
   # - name: Install Python libraries
   #   pip:
   #     name:
   #       - gps3
+  #       - tzlocal
 
   # # *******************************
   # - name: Configure /tmp to be mounted with tmpfs
@@ -97,4 +99,11 @@
     with_fileglob:
       - "files/bin/*.py"
       - "files/bin/*.sh"
+  # - name: Copy the beep files
+  #   copy:
+  #     src: "{{item}}"
+  #     dest: "{{ivr_home}}"
+  #     mode: 0755
+  #   with_fileglob:
+  #     - "files/beep.mp3"
 

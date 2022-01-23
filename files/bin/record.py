@@ -1,5 +1,6 @@
 # python3 record.py 2> /dev/null &
 #
+import argparse
 import os
 import subprocess
 import datetime
@@ -7,182 +8,92 @@ import sys
 import re
 import queue
 import threading
-from gps3 import gps3
+import ivr
 
-TEMP_DIR = "/opt/ivr/tmp"  # tmpfs (RAM disk) is preferred for frequent writes
-FOOTAGE_DIR = "/opt/ivr/data"  # directory whre recorded video files are stored
-TELOP_FILE = os.path.join(TEMP_DIR, "telop.txt")
-TYPICAL_SIZE_OF_FOOTAGE_FILE = 360 * 1024 * 1024
-
-FOOTAGE_FILE_EXT = "mkv"
-FOOTAGE_FILE_MP4 = "mp4"
+# Real-time recording format: mkv, mp4, avi
+FOOTAGE_FILE_EXT = "avi"
 
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
-def start_camera_recording():
+def start_camera_recording(dev_video, dev_audio, telop_file, dir):
 
     # calculate the number of seconds remaining in this hour
-    delta = datetime.timedelta(minutes=10)
+    delta = datetime.timedelta(hours=1)
     now = datetime.datetime.now()
-    end = (
-        datetime.datetime(
-            now.year, now.month, now.day, now.hour, int(now.minute / 10) * 10, 0
-        )
-        + delta
-    )
+    end = datetime.datetime(now.year, now.month, now.day, now.hour) + delta
     interval = (end - now).seconds
-    log("START: {}, END: {}, INTERVAL: {}".format(now, end, interval))
 
     # determine unique filename
     i = 0
     while True:
-        file_name = footage_file_name(now, i, FOOTAGE_FILE_EXT)
-        output = os.path.join(FOOTAGE_DIR, file_name)
+        file_name = ivr.footage_file_name(now, i, FOOTAGE_FILE_EXT)
+        output = os.path.join(dir, file_name)
         if not os.path.exists(output):
             break
         i += 1
+    t1 = now.strftime("%F %T")
+    t2 = end.time()
+    ivr.log(
+        "start recording: {} between {} and {} ({} sec)".format(
+            output, t1, t2, interval
+        )
+    )
 
     telop = [
-        "format=yuv420p",
+        "format=pix_fmts=yuv420p",
         "drawbox=y=ih-16:w=iw:h=16:t=fill:color=black@0.4",
         "drawtext='text=%{localtime\\:%F %T}:fontsize=12:fontcolor=#DDDDDD:x=4:y=h-12'",
-        "drawtext=textfile=/tmp/telop.txt:fontsize=12:reload=1:fontcolor=#DDDDDD:x=150:y=h-12",
+        "drawtext=textfile={}:fontsize=12:reload=1:fontcolor=#DDDDDD:x=140:y=h-12".format(
+            telop_file
+        ),
     ]
-    command = [
-        "ffmpeg",
-        "-nostdin",
-        "-t",
-        str(interval),
-        # video input
-        "-f",
-        "v4l2",
-        "-thread_queue_size",
-        "8192",
-        "-s",
-        "640x360",
-        "-framerate",
-        "25",
-        "-i",
-        "/dev/video0",
-        # audio input
-        "-f",
-        "alsa",
-        "-thread_queue_size",
-        "1024",
-        "-ac",
-        "1",
-        "-i",
-        "hw:1,0",
-        # video filter
-        "-vf",
-        ",".join(telop),
-        # convert
-        "-c:v",
-        "mjpeg",
-        "-q:v",  # JPEG quality (2-31)
-        "3",
-        "-b:v",
-        "768k",
-        output,
-    ]
+
+    command = ["ffmpeg"]
+    command.extend(["-nostdin", "-xerror"])
+    command.extend(["-loglevel", "warning"])
+    command.extend(["-t", str(interval)])
+
+    # video input options
+    # -vsync: When a frame isn't received from the camera at the specified frame rate, it
+    #         deletes or duplicates the frame to achieve the specified frame rate.
+    command.extend(["-f", "v4l2"])
+    command.extend(["-vsync", "cfr"])
+    command.extend(["-thread_queue_size", "8192"])
+    command.extend(["-s", "640x360"])
+    command.extend(["-framerate", "30"])
+    command.extend(["-i", dev_video])
+
+    # audio input options
+    # NOTE: The audio will not be recorded because once ALSA's buffer xrun error occurs, FFmpeg
+    # exit with code -9 and the video file isn't playable at all.
+    # -channel_layout: to avoid warning message "Guessed Channel Layout for Input Stream #1.0 : mono"
+    if False:
+        command.extend(["-f", "alsa"])
+        command.extend(["-thread_queue_size", "8192"])
+        command.extend(["-ac", "1"])  # the number of channels: 1=mono
+        command.extend(["-channel_layout", "mono"])
+        command.extend(["-ar", "8k"])  # audio sampling rate
+        command.extend(["-i", "hw:{}".format(dev_audio)])
+
+    # video filter
+    command.extend(["-vf", ",".join(telop)])
+
+    # video / audio output options
+    if FOOTAGE_FILE_EXT == "mkv":
+        # -q:v: JPEG quality (2-31)
+        command.extend(["-c:v", "mjpeg"])
+        command.extend(["-q:v", "3"])
+    elif FOOTAGE_FILE_EXT == "mp4":
+        command.extend(["-c:v", "h264_v4l2m2m"])
+        command.extend(["-pix_fmt", "yuv420p"])
+
+    # output file
+    command.extend(["-b:v", "768k"])
+    command.extend([output])
+
     result = subprocess.run(command)
-    print("exit process: %s" % result)
-    print("recorded the footage: %s" % output)
-    return (result.returncode, output)
-
-
-def start_gps_recording(telop_file):
-    socket = gps3.GPSDSocket()
-    socket.connect()
-    socket.watch()
-
-    def time(tm, ept):
-        if tm is None or tm == "n/a":
-            return "--:--:--±-"
-        else:
-            jst = datetime.timezone(datetime.timedelta(hours=9), "JST")
-            tm = datetime.datetime.strptime(tm, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
-                jst
-            )
-            tm = tm.strftime("%H:%M:%S")
-            ept = 0 if ept is None else int(float(ept))
-            return tm if ept == 0 else "{}±{}".format(tm, ept)
-
-    def latlon(ll, ne, sw):
-        if ll is None or ll == "n/a":
-            return "---.----"
-        else:
-            ll = float(ll)
-            return "{}{:.4f}".format(ne if ll >= 0.0 else sw, abs(ll))
-
-    def unit(alt, unit, default, conv=None):
-        if alt is not None and alt != "n/a":
-            alt = float(alt) if conv is None else conv(float(alt))
-            alt = "{:.1f}".format(alt)
-        else:
-            alt = default
-        return "{}{}".format(alt, unit)
-
-    base = datetime.datetime(year=2000, month=1, day=1)
-    ds = gps3.DataStream()
-    for new_data in socket:
-        data = None
-        now = datetime.datetime.now()
-        if new_data:
-            ds.unpack(new_data)
-            tm = time(ds.TPV["time"], ds.TPV["ept"])
-            lat = latlon(ds.TPV["lat"], "N", "S")
-            lon = latlon(ds.TPV["lon"], "E", "W")
-            alt = unit(ds.TPV["alt"], "m", "---")
-            speed = unit(ds.TPV["speed"], "km/h", "---", lambda s: s * 3600.0 / 1000.0)
-            data = "[GPS {}]  {}/{}  {}  {}".format(tm, lat, lon, alt, speed)
-            base = now
-        elif (now - base).seconds > 20:
-            data = "Lost GPS signal."
-            base = now
-        if data is not None:
-            temp_file = "{}.tmp".format(telop_file)
-            with open(temp_file, mode="w") as f:
-                f.write(data)
-            os.rename(temp_file, telop_file)
-    return
-
-
-mjpeg_to_mp4_queue = queue.Queue()
-
-# Convert the specified Motion JPEG file to MPEG-4 and remove the original file if success.
-def start_mjpeg_to_mp4_message_loop():
-    while True:
-        src = mjpeg_to_mp4_queue.get()
-        if src is None:
-            break
-
-        # remove if the file is empty
-        if os.path.getsize(src) == 0:
-            os.remove(src)
-            continue
-
-        # get destination file
-        dir = os.path.dirname(src)
-        base = os.path.splitext(os.path.basename(src))[0]
-        dest = os.path.join(dir, "%s.%s" % (base, FOOTAGE_FILE_MP4))
-
-        # ffmpeg -y -i footage-20220122.03.mkv -c:v copy footage-20220122.03.recover.mkv
-        command = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            src,
-            "-c:v",
-            "h264_v4l2m2m",
-            "-pix_fmt",
-            "yuv420p",
-            dest,
-        ]
-        result = subprocess.run(command)
-        if result.returncode == 0:
-            os.remove(src)
-        log("Motion JPEG file was converted to MPEG-4: %s", dest)
+    ivr.log("exit process: %s" % result)
+    ivr.log("recorded the footage: %s" % output)
     return (result.returncode, output)
 
 
@@ -222,7 +133,7 @@ def detect_default_usb_camera():
                     device = line.strip()
                     min_n = int(matcher[1])
         elif len(line.strip()) != 0:
-            print("WARNING: unknown device: %s" % line, file=sys.stderr)
+            ivr.log("WARNING: unknown device: %s" % line)
     if device is not None:
         return (title, device)
     return None
@@ -245,92 +156,29 @@ def detect_default_usb_audio():
     return None
 
 
-# Remove the oldest data first to reduce it below the maximum capacity if the total size of the
-# video files in the directory exceeds the maximum capacity.
-def cleanup(dir, max_capacity):
-    log("cleanup: %s, %s" % (dir, max_capacity))
-    files = []
-    total_size = 0
-    max_size = TYPICAL_SIZE_OF_FOOTAGE_FILE
-    for f in os.listdir(dir):
-        file = os.path.join(dir, f)
-        date = date_of_footage_file(file, FOOTAGE_FILE_EXT)
-        if date is not None:
-            size = os.path.getsize(file)
-            tm = os.stat(file).st_mtime
-            total_size += size
-            max_size = max(max_size, size)
-            files.append((date, tm, file, size))
-    files = sorted(files)
-    # The size that is assumed not to exceed the max_capacity even if a footage is added.
-    limited_capacity = max_capacity - max_size
-    while total_size > limited_capacity and len(files) > 1:
-        f = files.pop(0)
-        file = f[2]
-        size = f[3]
-        os.remove(file)
-        total_size -= size
-        log("footage file removed: %s" % file)
-
-
-# Returns the recording date and sequence number if the file is a video file recorded by IVR.
-# If the file isn't a video, returns None.
-def date_of_footage_file(file, extension):
-    file_pattern = (
-        "footage-(\\d{4})(\\d{2})(\\d{2})\\.(\\d{2})(\\d{2})(\\.(\\d+))?\." + extension
-    )
-    file_pattern = re.compile(file_pattern)
-    if os.path.isfile(file):
-        matcher = re.fullmatch(file_pattern, os.path.basename(file))
-        if matcher is not None:
-            date = datetime.datetime(
-                int(matcher[1]),
-                int(matcher[2]),
-                int(matcher[3]),
-                int(matcher[4]),
-                int(matcher[5]),
-            )
-            return date
-    return None
-
-
-# Generate a footage file name from the specified date and sequence number.
-def footage_file_name(date, sequence, extension):
-    date_part = date.strftime("%Y%m%d.%H%M")
-    seq_part = "" if sequence == 0 else (".%d" % sequence)
-    return "footage-%s%s.%s" % (date_part, seq_part, extension)
-
-
-def log(msg):
-    print("***", msg)
-
-
-def main():
-    footage_dir = FOOTAGE_DIR
-    max_capacity = 10 * 1024 * 1024 * 1024
-
-    dev_video = detect_default_usb_camera()
-    dev_audio = detect_default_usb_audio()
-    # print(dev_video, dev_audio)
-
-    telop_file = TELOP_FILE
-    with open(telop_file, mode="w") as f:
-        f.write("GPS positioning...")
-
-    gps_recording = threading.Thread(target=lambda: start_gps_recording(telop_file))
-    gps_recording.start()
-
-    mjpeg_to_mp4 = threading.Thread(target=start_mjpeg_to_mp4_message_loop)
-    mjpeg_to_mp4.start()
-
-    while True:
-        cleanup(footage_dir, max_capacity)
-        ret, file = start_camera_recording()
-        log("END: {} -> {}".format(ret, file))
-
-    mjpeg_to_mp4_queue.put(None)
-    mjpeg_to_mp4.join()
-
-
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Save the footage from USB camera")
+    parser.add_argument("dir", help="Directory where footage files are stored")
+    parser.add_argument(
+        "telop", help="File that contains text to overlay on the footage"
+    )
+    parser.add_argument(
+        "-v", "--video", help="Camera device to be used, such as /dev/video0"
+    )
+
+    args = parser.parse_args()
+    dir = args.dir
+    telop = args.telop
+    dev_video = args.video
+
+    if dev_video is None:
+        dev_video_title, dev_video = detect_default_usb_camera()
+        ivr.log("Detected USB camera: {} = {}".format(dev_video, dev_video_title))
+    dev_autio_title, dev_audio = detect_default_usb_audio()
+    ivr.log("Detected Audio: {} = {}".format(dev_audio, dev_autio_title))
+
+    ivr.beep("IVR starts to recording.")
+    while True:
+        ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
+        ivr.beep("The recording has been switched with return code {}.".format(ret))
+        ivr.log("END: {} -> {}".format(ret, file))
