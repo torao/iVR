@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import re
+import fcntl
 
 FOOTAGE_FILE_PATTERN = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.[a-zA-Z0-9]+"
 
@@ -46,6 +47,48 @@ def beep(speech):
 
 # Output the specified message as log to the standard output.
 def log(msg):
+
+    # refer to the file where the log is output
+    global _log_file
+    global _log_lock_file
+    if _log_file is None:
+        _log_file = os.path.join(data_dir(), "ivr.log")
+        _log_lock_file = os.path.join(data_dir(), "ivr.log.lock")
+    log_file = _log_file
+    lock_file = _log_lock_file
+
+    # write log with exclusive lock
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     program = os.path.basename(sys.argv[0])
-    print("[{}] {} - {}".format(now, program, msg))
+    message = "[{}] {} - {}\n".format(now, program, msg)
+    with open(lock_file, mode="w") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        with open(log_file, mode="a") as f:
+            f.write(message)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    return
+
+
+_home_directory = None  # Home directory
+_log_file = None  # Log file
+_log_lock_file = None  # Log write-lock file
+
+
+# Refer the home directory of IVR.
+def home_dir():
+    global _home_directory
+    if _home_directory is None:
+        path = os.path.abspath(sys.argv[0])
+        path = os.path.join(os.path.dirname(path), "..")
+        _home_directory = os.path.abspath(path)
+    return _home_directory
+
+
+# Refer to the temporary directory. Note that the files in this directory may not be persistent.
+def temp_dir():
+    return os.path.join(home_dir(), "tmp")
+
+
+# Refer to the data directory.
+def data_dir():
+    return os.path.join(home_dir(), "data")
