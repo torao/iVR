@@ -53,7 +53,7 @@ def log(msg):
     global _log_lock_file
     if _log_file is None:
         _log_file = os.path.join(data_dir(), "ivr.log")
-        _log_lock_file = os.path.join(data_dir(), "ivr.log.lock")
+        _log_lock_file = os.path.join(temp_dir(), "ivr_log.lock")
     log_file = _log_file
     lock_file = _log_lock_file
 
