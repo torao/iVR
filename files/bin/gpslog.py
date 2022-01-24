@@ -5,6 +5,7 @@ import os
 import datetime
 import sys
 import ivr
+import gpx
 import time
 import tzlocal
 from gps3 import gps3
@@ -108,17 +109,17 @@ def position(socket):
                 dir = direction(ds.TPV["track"])
                 speed = speed_text(ds.TPV["speed"])
                 pos = "{}/{}  {}  {}:{}".format(lat, lon, alt, dir, speed)
-                return (delta, pos)
+                return (delta, pos, ds)
             elif (now - begin).seconds > 1:
-                return (None, "GPS positioning...")
+                return (None, "GPS positioning...", None)
         elif (now - begin).seconds > 25:
-            return (None, "Lost GPS signal.")
-    return
+            break
+    return (None, "Lost GPS signal", None)
 
 
 # Start GPS positioning.
 # This function writes the information obtained from the GPS to the specified file.
-def start_gps_recording(file):
+def start_gps_recording(file, logdir):
     ivr.log("start gps logging service: {}".format(file))
 
     def write(text):
@@ -135,9 +136,17 @@ def start_gps_recording(file):
     write("Detecting GPS device...")
     delta = None
     while True:
-        current_delta, text = position(socket)
+
+        # obtain gps position
+        current_delta, text, ds = position(socket)
         if current_delta is not None:
             delta = current_delta
+
+        # save the track log
+        if ds is not None:
+            gpx.add_track_log(logdir, datetime.datetime.now(), ds)
+
+        # to reduce the load, a few seconds are slipped without actually being acquired from GPS
         for _ in range(5):
             if delta is not None:
                 tm = datetime.datetime.now() + delta
@@ -159,11 +168,22 @@ if __name__ == "__main__":
         description="GPS positioning and storing process for IVR"
     )
     parser.add_argument(
-        "file",
-        nargs="?",
+        "-o",
+        "--output",
+        metavar="FILE",
         default=ivr.telop_file(),
         help="Destination file name (default: {})".format(ivr.telop_file()),
     )
+    parser.add_argument(
+        "-d",
+        "--dir",
+        metavar="DIR",
+        default=ivr.data_dir(),
+        help="Directory of GPX track-log destination (default: {})".format(
+            ivr.data_dir()
+        ),
+    )
     args = parser.parse_args()
-    file = args.file
-    start_gps_recording(file)
+    file = args.output
+    dir = args.dir
+    start_gps_recording(file, dir)

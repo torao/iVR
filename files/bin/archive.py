@@ -95,6 +95,7 @@ def archive_footage_files(dir, limit):
         size = os.path.getsize(file)
         if ivr.is_in_recording(file):
             t0 = datetime.datetime.now()
+            ivr.log("start migration: {}".format(file))
             mp4_file = convert_wip_to_mp4(file)
             if mp4_file is not None:
                 t1 = datetime.datetime.now()

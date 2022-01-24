@@ -67,6 +67,13 @@ def footage_file_name(date, sequence, extension):
     return "footage-%s%s.%s" % (date_part, seq_part, extension)
 
 
+# Generate a track-log file name from the specified date and sequence number.
+def tracklog_file_name(date, sequence):
+    date_part = date.strftime("%Y%m%d")
+    seq_part = "" if sequence == 0 else (".%d" % sequence)
+    return "tracklog-%s%s.gpx" % (date_part, seq_part)
+
+
 # Notify the user of the specified text.
 def beep(speech):
     cmd = ["espeak", speech]
