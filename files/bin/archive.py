@@ -158,13 +158,22 @@ if __name__ == "__main__":
         help="Interval at which to monitor the directory (default: 20 sec)",
     )
 
-    args = parser.parse_args()
-    dir = args.dir
-    limit = ivr.without_aux_unit(args.limit)
-    interval = args.interval
+    try:
 
-    while True:
-        converted = archive_footage_files(dir, limit)
-        if converted:
-            archive_footage_files(dir, limit)
-        time.sleep(interval)
+        args = parser.parse_args()
+        dir = args.dir
+        limit = ivr.without_aux_unit(args.limit)
+        interval = args.interval
+
+        while True:
+            converted = archive_footage_files(dir, limit)
+            if converted:
+                archive_footage_files(dir, limit)
+            time.sleep(interval)
+
+    except Exception as e:
+        t = "".join(list(traceback.TracebackException.from_exception(e).format()))
+        ivr.log("ERROR: {}".format(t))
+        ivr.log("IVR terminates the cleaning by an error")
+        ivr.beep("cleaning has stopped due to an error")
+        sys.exit(1)

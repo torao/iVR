@@ -9,6 +9,7 @@ import re
 import queue
 import threading
 import ivr
+import traceback
 
 # Real-time recording format: mkv, mp4, avi
 FOOTAGE_FILE_EXT = "avi"
@@ -89,7 +90,7 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     command.extend([output])
 
     result = subprocess.run(command)
-    ivr.log("exit process: %s" % result)
+    ivr.log("exit process: %s" % " ".join(result.args))
     ivr.log("recorded the footage: %s" % output)
     return (result.returncode, output)
 
@@ -193,19 +194,31 @@ if __name__ == "__main__":
         help="Camera device to be used, such as /dev/video0 (default: auto detect)",
     )
 
-    args = parser.parse_args()
-    dir = args.dir
-    telop = args.telop
-    dev_video = args.video
+    try:
+        args = parser.parse_args()
+        dir = args.dir
+        telop = args.telop
+        dev_video = args.video
 
-    if dev_video is None:
-        dev_video_title, dev_video = detect_default_usb_camera()
-        ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
-    dev_autio_title, dev_audio = detect_default_usb_audio()
-    ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
+        if dev_video is None:
+            dev_video_title, dev_video = detect_default_usb_camera()
+            ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
+        dev_autio_title, dev_audio = detect_default_usb_audio()
+        ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
 
-    ivr.beep("IVR starts to recording.")
-    while True:
-        ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
-        ivr.beep("The recording has been switched with return code {}.".format(ret))
-        ivr.log("end recording: {} -> {}".format(ret, file))
+        # create an empty telop file assuming that it's before the GPS logger is started
+        if not os.path.isfile(telop):
+            with open(telop, mode="w"):
+                pass
+
+        ivr.beep("IVR starts to recording.")
+        while True:
+            ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
+            ivr.beep("The recording has been switched with return code {}.".format(ret))
+            ivr.log("end recording: {} -> {}".format(ret, file))
+    except Exception as e:
+        t = "".join(list(traceback.TracebackException.from_exception(e).format()))
+        ivr.log("ERROR: {}".format(t))
+        ivr.log("IVR terminates the recording by an error")
+        ivr.beep("footage recording has stopped due to an error")
+        sys.exit(1)

@@ -183,7 +183,18 @@ if __name__ == "__main__":
             ivr.data_dir()
         ),
     )
-    args = parser.parse_args()
-    file = args.output
-    dir = args.dir
-    start_gps_recording(file, dir)
+
+    try:
+
+        args = parser.parse_args()
+        file = args.output
+        dir = args.dir
+
+        start_gps_recording(file, dir)
+
+    except Exception as e:
+        t = "".join(list(traceback.TracebackException.from_exception(e).format()))
+        ivr.log("ERROR: {}".format(t))
+        ivr.log("IVR terminates the GPS logging by an error")
+        ivr.beep("GPS logging has stopped due to an error")
+        sys.exit(1)
