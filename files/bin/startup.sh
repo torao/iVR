@@ -10,5 +10,5 @@
 #DEVICE_AUDIO=1,0
 
 python3 $(dirname $0)/gpslog.py &
-python3 $(dirname $0)/archive.py -l 3G &
+python3 $(dirname $0)/coordinate.py -l 3G &
 python3 $(dirname $0)/record.py &
