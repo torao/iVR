@@ -1,26 +1,15 @@
 # python3 archive.py 2> /dev/null &
 #
-# Removes the recorded footage files until their total size is less than the maximum capacity,
-# and converts the real-time recorded files to MP4.
+# Remove recorded footage, GPX logs, and other files until their total size is less than the maximum
+# capacity.
 #
 import argparse
 import os
-import subprocess
-import datetime
 import sys
-import time
 import re
 import ivr
 import traceback
 import signal
-
-ffmpeg_process = None
-
-# change the extension of the specified file.
-def change_extension(file, extension):
-    dir = os.path.dirname(file)
-    base = os.path.splitext(os.path.basename(file))[0]
-    return os.path.join(dir, "{}.{}".format(base, extension))
 
 
 def remove(file, reason=None):
@@ -29,136 +18,41 @@ def remove(file, reason=None):
     ivr.log("file removed: {}{}".format(file, reason))
 
 
-# Convert the specified AVI or Motion JPEG file to MPEG-4 and remove the original file if success.
-def convert_wip_to_mp4(src):
-    global ffmpeg_process
-
-    dest = change_extension(src, "mp4")
-
-    # ffmpeg -y -i footage-20220122.03.mkv -c:v copy footage-20220122.03.recover.mkv
-    command = ["ffmpeg"]
-    command.extend(["-y"])
-    command.extend(["-loglevel", "warning"])
-    command.extend(["-i", src])
-    command.extend(["-c:v", "h264_v4l2m2m"])
-    command.extend(["-pix_fmt", "yuv420p"])
-    command.extend(["-b:v", "768k"])
-    command.extend([dest])
-
-    proc = subprocess.Popen(
-        command,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-    )
-    ffmpeg_process = proc
-    try:
-        ivr.log("start ffmpeg: %s" % " ".join(proc.args))
-        line = proc.stderr.readline()
-        while line:
-            ivr.log("FFmpeg: {}".format(line.decode("utf-8").strip()))
-            line = proc.stderr.readline()
-    finally:
-        ffmpeg_process = None
-
-    result = subprocess.run(command)
-    if result.returncode != 0:
-        ivr.beep("Failed to convert to MP4")
-        ivr.log("failed to convert to MP4: {}".format(src))
-        if os.path.isfile(dest):
-            remove(dest)
-        return None
-    return dest
-
-
-# Remove the oldest data first to reduce it below the maximum capacity if the total size of the
-# video files in the directory exceeds the maximum capacity.
-def archive_footage_files(dir, limit):
-
-    # remove interrupted files in the process of converting to MP4
-    for f in os.listdir(dir):
-        file = os.path.join(dir, f)
-        date = ivr.date_of_footage_file(file)
-        if date is not None and ivr.is_in_recording(file):
-            mp4_file = change_extension(file, "mp4")
-            if os.path.isfile(mp4_file):
-                reason = "interrupted file in the process of converting to MP4"
-                remove(mp4_file, reason)
+# Remote files with older timestamps so that the total size of files with filenames of the
+# specified pattern doesn't exceed the maximum capacity (but the least min_fises remain).
+def ensure_storage_space(dir, file_pattern, max_capacity, min_files):
 
     # retrie all footage files and sort them in order of newest to oldest
     files = []
     for f in os.listdir(dir):
-        file = os.path.join(dir, f)
-        date = ivr.date_of_footage_file(file)
-        if date is not None:
+        if re.fullmatch(file_pattern, f):
+            file = os.path.join(dir, f)
             if os.path.getsize(file) == 0:
                 # remove if the file is empty
                 reason = "empty file"
                 remove(file, reason)
             else:
-                files.append((date, os.stat(file).st_mtime, file))
+                files.append((os.stat(file).st_mtime, file))
     files.sort(reverse=True)
-    files = [f for _, _, f in files]
+    files = [f for _, f in files]
 
-    # find and remove the most recent file being recorded from list
+    # exclude the latest files from being removed
     total_size = 0
-    for i in range(len(files)):
-        file = files[i]
-        if ivr.is_in_recording(file):
+    for _ in range(min_files):
+        if len(files) == 0:
+            break
+        else:
+            file = files.pop(0)
             total_size += os.path.getsize(file)
-            files.pop(i)
-            break
 
-    # remove the files we want to keep from the list
-    converted = False
-    while len(files) > 0 and total_size <= limit:
-        file = files[0]
-        ext = ivr.file_extension(file)
-        size = os.path.getsize(file)
-        if ivr.is_in_recording(file):
-            t0 = datetime.datetime.now()
-            ivr.log("start migration: {}".format(file))
-            mp4_file = convert_wip_to_mp4(file)
-            if mp4_file is not None:
-                t1 = datetime.datetime.now()
-                remove(file)
-                dest_size = os.path.getsize(mp4_file)
-                total_size += dest_size
-                files.pop(0)
-                converted = True
+    # remove old files that have exceeded storage capacity
+    for file in files:
+        if total_size + os.path.getsize(file) > max_capacity:
+            remove(file, "exceeding the storage capacity")
+        else:
+            total_size += os.path.getsize(file)
 
-                # output to log
-                mp4_name = os.path.basename(mp4_file)
-                effect = dest_size / size
-                src_size = ivr.with_aux_unit(size)
-                dest_size = ivr.with_aux_unit(dest_size)
-                interval = (t1 - t0).seconds
-                ivr.log(
-                    "the file has been migrated: {} ({}B) -> {} ({}B: {:.1%}); {}sec".format(
-                        file, src_size, mp4_name, dest_size, effect, interval
-                    )
-                )
-                continue
-            else:
-                ivr.log("fail to convert to MP4: {}".format(file))
-        if total_size + size > limit:
-            break
-        total_size += size
-        files.pop(0)
-
-    # remove files that have exceeded the limit
-    for f in files:
-        remove(f, "exceeding the limit")
-
-    return converted
-
-
-# Stop the FFmpeg subprocess if it's running and a TermException will be thrown.
-def term_handler(signum, frame):
-    global ffmpeg_process
-    if ffmpeg_process is not None:
-        ffmpeg_process.terminate()
-    raise ivr.TermException("")
+    return
 
 
 if __name__ == "__main__":
@@ -170,14 +64,23 @@ if __name__ == "__main__":
         "--dir",
         metavar="DIR",
         default=ivr.data_dir(),
-        help="Directory of footage files (default: {})".format(ivr.data_dir()),
+        help="Directory where the footage and other files are stored (default: {})".format(
+            ivr.data_dir()
+        ),
     )
     parser.add_argument(
-        "-l",
-        "--limit",
+        "-lf",
+        "--limit-footage",
         metavar="CAPACITY",
-        default="32G",
-        help="Maximum total size of files to be saved, such as 32G, 32000M (default: 32G)",
+        default="60G",
+        help="Total size of footage file to be retained, such as 32G, 32000M (default: 60G)",
+    )
+    parser.add_argument(
+        "-lt",
+        "--limit-tracklog",
+        metavar="CAPACITY",
+        default="2G",
+        help="Total size of track log file to be retained, such as 32G, 32000M (default: 2G)",
     )
     parser.add_argument(
         "-i",
@@ -191,18 +94,18 @@ if __name__ == "__main__":
     try:
 
         # register SIGTERM handler
-        signal.signal(signal.SIGTERM, term_handler)
-        signal.signal(signal.SIGINT, term_handler)
+        signal.signal(signal.SIGTERM, ivr.term_handler)
+        signal.signal(signal.SIGINT, ivr.term_handler)
 
         args = parser.parse_args()
         dir = args.dir
-        limit = ivr.without_aux_unit(args.limit)
+        limit_footage = ivr.without_aux_unit(args.limit_footage)
+        limit_tracklog = ivr.without_aux_unit(args.limit_tracklog)
         interval = args.interval
 
         while True:
-            converted = archive_footage_files(dir, limit)
-            if converted:
-                archive_footage_files(dir, limit)
+            ensure_storage_space(dir, ivr.FOOTAGE_FILE_PATTERN, limit_footage, 2)
+            ensure_storage_space(dir, ivr.TRACKLOG_FILE_PATTERN, limit_tracklog, 2)
             time.sleep(interval)
 
     except ivr.TermException as e:

@@ -15,9 +15,6 @@ import signal
 # Real-time recording format: mkv, mp4, avi
 FOOTAGE_FILE_EXT = "avi"
 
-# Archived footage file extension
-ARCHIVED_FOOTAGE_FILE_EXT = "mp4"
-
 # FFmpeg subprocess
 ffmpeg_process = None
 
@@ -116,15 +113,13 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
 
 # Create a new file name based on the specified datetime that doesn't overlap with any existing
 # footage file.
-# Note that you need to consider the case where an AVI file for a certan date and sequence has
-# already been converted to MP3 and removed.
 def new_footage_file(dir, now, ext):
-    exts = list({ext, ARCHIVED_FOOTAGE_FILE_EXT})
     i = 0
     while True:
-        file_names = [ivr.footage_file_name(now, i, ext) for ext in exts]
-        if not any([os.path.exists(os.path.join(dir, f)) for f in file_names]):
-            return os.path.join(dir, ivr.footage_file_name(now, i, ext))
+        file_name = ivr.footage_file_name(now, i, ext)
+        path = os.path.join(dir, file_name)
+        if not os.path.exists(path):
+            return path
         i += 1
 
 

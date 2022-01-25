@@ -5,16 +5,9 @@ import sys
 import re
 import fcntl
 
-FOOTAGE_FILE_PATTERN = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.[a-zA-Z0-9]+"
-
 
 def file_extension(file):
     return os.path.splitext(os.path.basename(file))[1]
-
-
-def is_in_recording(file):
-    ext = file_extension(file)
-    return ext == ".mkv" or ext == ".avi"
 
 
 AUXILIARY_UNITS = ["", "k", "M", "G", "T", "P"]
@@ -56,8 +49,11 @@ def without_aux_unit(num):
     return float(num.replace(",", "")) * multi
 
 
-# Returns the recording date and sequence number if the file is a video file recorded by IVR.
-# If the file doesn't exist or isn't a footage video, returns None.
+FOOTAGE_FILE_PATTERN = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.[a-zA-Z0-9]+"
+TRACKLOG_FILE_PATTERN = r"tracklog-(\d{4})(\d{2})(\d{2})\.gpx"
+
+# Returns the recording date if the file is a footage file recorded by IVR.
+# If the file doesn't exist or isn't a footage, returns None.
 def date_of_footage_file(file):
     if os.path.isfile(file):
         matcher = re.fullmatch(FOOTAGE_FILE_PATTERN, os.path.basename(file))
