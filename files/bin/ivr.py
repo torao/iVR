@@ -76,7 +76,7 @@ def tracklog_file_name(date, sequence):
 
 # Notify the user of the specified text.
 def beep(speech):
-    cmd = ["espeak", speech]
+    cmd = ["espeak", "-p", "30", "-g", "11", "notice. {}".format(speech)]
     subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

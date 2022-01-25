@@ -99,11 +99,9 @@
     with_fileglob:
       - "files/bin/*.py"
       - "files/bin/*.sh"
-  # - name: Copy the beep files
-  #   copy:
-  #     src: "{{item}}"
-  #     dest: "{{ivr_home}}"
-  #     mode: 0755
-  #   with_fileglob:
-  #     - "files/beep.mp3"
 
+  - name: Register the script to cron to be started at boot
+    cron:
+      name: "in-vehicle recorder"
+      special_time: reboot
+      job: "{{ivr_home}}/bin/startup.sh"
