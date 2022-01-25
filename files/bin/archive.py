@@ -11,6 +11,10 @@ import sys
 import time
 import re
 import ivr
+import traceback
+import signal
+
+ffmpeg_process = None
 
 # change the extension of the specified file.
 def change_extension(file, extension):
@@ -27,6 +31,8 @@ def remove(file, reason=None):
 
 # Convert the specified AVI or Motion JPEG file to MPEG-4 and remove the original file if success.
 def convert_wip_to_mp4(src):
+    global ffmpeg_process
+
     dest = change_extension(src, "mp4")
 
     # ffmpeg -y -i footage-20220122.03.mkv -c:v copy footage-20220122.03.recover.mkv
@@ -38,6 +44,22 @@ def convert_wip_to_mp4(src):
     command.extend(["-pix_fmt", "yuv420p"])
     command.extend(["-b:v", "768k"])
     command.extend([dest])
+
+    proc = subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    ffmpeg_process = proc
+    try:
+        ivr.log("start ffmpeg: %s" % " ".join(proc.args))
+        line = proc.stderr.readline()
+        while line:
+            ivr.log("FFmpeg: {}".format(line.decode("utf-8").strip()))
+            line = proc.stderr.readline()
+    finally:
+        ffmpeg_process = None
 
     result = subprocess.run(command)
     if result.returncode != 0:
@@ -131,6 +153,14 @@ def archive_footage_files(dir, limit):
     return converted
 
 
+# Stop the FFmpeg subprocess if it's running and a TermException will be thrown.
+def term_handler(signum, frame):
+    global ffmpeg_process
+    if ffmpeg_process is not None:
+        ffmpeg_process.terminate()
+    raise ivr.TermException("")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Convert and remove recorded footage files"
@@ -160,6 +190,10 @@ if __name__ == "__main__":
 
     try:
 
+        # register SIGTERM handler
+        signal.signal(signal.SIGTERM, term_handler)
+        signal.signal(signal.SIGINT, term_handler)
+
         args = parser.parse_args()
         dir = args.dir
         limit = ivr.without_aux_unit(args.limit)
@@ -171,6 +205,9 @@ if __name__ == "__main__":
                 archive_footage_files(dir, limit)
             time.sleep(interval)
 
+    except ivr.TermException as e:
+        ivr.log("IVR terminates the cleaning")
+        ivr.beep("cleaning has stopped")
     except Exception as e:
         t = "".join(list(traceback.TracebackException.from_exception(e).format()))
         ivr.log("ERROR: {}".format(t))

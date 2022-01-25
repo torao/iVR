@@ -9,6 +9,8 @@ import gpx
 import time
 import tzlocal
 from gps3 import gps3
+import traceback
+import signal
 
 DIRECTION = [
     "N",
@@ -186,12 +188,19 @@ if __name__ == "__main__":
 
     try:
 
+        # register SIGTERM handler
+        signal.signal(signal.SIGTERM, ivr.term_handler)
+        signal.signal(signal.SIGINT, ivr.term_handler)
+
         args = parser.parse_args()
         file = args.output
         dir = args.dir
 
         start_gps_recording(file, dir)
 
+    except ivr.TermException as e:
+        ivr.log("IVR terminates the GPS logging")
+        ivr.beep("GPS logging has stopped")
     except Exception as e:
         t = "".join(list(traceback.TracebackException.from_exception(e).format()))
         ivr.log("ERROR: {}".format(t))

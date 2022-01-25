@@ -19,6 +19,17 @@ def is_in_recording(file):
 
 AUXILIARY_UNITS = ["", "k", "M", "G", "T", "P"]
 
+# Exception to be used when an SIGTERM/SIGINT is detected.
+class TermException(Exception):
+    pass
+
+
+# A handler that only throws an TermException when SIGTERM/SIGINT is detected.
+# like: signal.signal(signal.SIGTERM, ivr.term_handler)
+def term_handler(signum, frame):
+    raise TermException("")
+
+
 # Return the specified integer as a string with auxiliary units of kMGTP.
 def with_aux_unit(num):
     for i in range(len(AUXILIARY_UNITS)):

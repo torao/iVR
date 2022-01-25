@@ -10,6 +10,7 @@ import queue
 import threading
 import ivr
 import traceback
+import signal
 
 # Real-time recording format: mkv, mp4, avi
 FOOTAGE_FILE_EXT = "avi"
@@ -17,9 +18,13 @@ FOOTAGE_FILE_EXT = "avi"
 # Archived footage file extension
 ARCHIVED_FOOTAGE_FILE_EXT = "mp4"
 
+# FFmpeg subprocess
+ffmpeg_process = None
+
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
 def start_camera_recording(dev_video, dev_audio, telop_file, dir):
+    global ffmpeg_process
 
     # determine unique file name
     output = new_footage_file(dir, datetime.datetime.now(), FOOTAGE_FILE_EXT)
@@ -89,10 +94,24 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     command.extend(["-b:v", "768k"])
     command.extend([output])
 
-    result = subprocess.run(command)
-    ivr.log("exit process: %s" % " ".join(result.args))
+    proc = subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    ffmpeg_process = proc
+    try:
+        ivr.log("start ffmpeg: %s" % " ".join(proc.args))
+        line = proc.stderr.readline()
+        while line:
+            ivr.log("FFmpeg: {}".format(line.decode("utf-8").strip()))
+            line = proc.stderr.readline()
+    finally:
+        ffmpeg_process = None
+
     ivr.log("recorded the footage: %s" % output)
-    return (result.returncode, output)
+    return (proc.returncode, output)
 
 
 # Create a new file name based on the specified datetime that doesn't overlap with any existing
@@ -168,6 +187,14 @@ def detect_default_usb_audio():
     return None
 
 
+# Stop the FFmpeg subprocess if it's running and a TermException will be thrown.
+def term_handler(signum, frame):
+    global ffmpeg_process
+    if ffmpeg_process is not None:
+        ffmpeg_process.terminate()
+    raise ivr.TermException("")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Save the footage from USB camera")
     parser.add_argument(
@@ -195,6 +222,11 @@ if __name__ == "__main__":
     )
 
     try:
+
+        # register SIGTERM handler
+        signal.signal(signal.SIGTERM, term_handler)
+        signal.signal(signal.SIGINT, term_handler)
+
         args = parser.parse_args()
         dir = args.dir
         telop = args.telop
@@ -216,6 +248,10 @@ if __name__ == "__main__":
             ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
             ivr.beep("The recording has been switched with return code {}.".format(ret))
             ivr.log("end recording: {} -> {}".format(ret, file))
+
+    except ivr.TermException as e:
+        ivr.log("IVR terminates the recording")
+        ivr.beep("footage recording has stopped")
     except Exception as e:
         t = "".join(list(traceback.TracebackException.from_exception(e).format()))
         ivr.log("ERROR: {}".format(t))
