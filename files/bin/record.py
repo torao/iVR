@@ -1,16 +1,15 @@
 # python3 record.py 2> /dev/null &
 #
 import argparse
-import os
-import subprocess
 import datetime
-import sys
+import os
 import re
-import queue
-import threading
-import ivr
-import traceback
 import signal
+import subprocess
+import sys
+import traceback
+
+import ivr
 
 # Real-time recording format: mkv, mp4, avi
 FOOTAGE_FILE_EXT = "avi"

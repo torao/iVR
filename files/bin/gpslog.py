@@ -1,16 +1,17 @@
 # python3 record.py 2> /dev/null &
 #
 import argparse
-import os
 import datetime
+import os
+import signal
 import sys
-import ivr
-import gpx
 import time
+import traceback
+
+import gpx
+import ivr
 import tzlocal
 from gps3 import gps3
-import traceback
-import signal
 
 DIRECTION = [
     "N",

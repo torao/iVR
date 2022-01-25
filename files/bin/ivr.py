@@ -1,9 +1,9 @@
-import subprocess
 import datetime
-import os
-import sys
-import re
 import fcntl
+import os
+import re
+import subprocess
+import sys
 
 
 def file_extension(file):

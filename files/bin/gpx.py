@@ -1,6 +1,7 @@
 import fcntl
-import ivr
 import os
+
+import ivr
 
 
 # Add GPS positioning information to the track log file.

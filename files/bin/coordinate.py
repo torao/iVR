@@ -5,11 +5,12 @@
 #
 import argparse
 import os
-import sys
 import re
-import ivr
-import traceback
 import signal
+import sys
+import traceback
+
+import ivr
 
 
 def remove(file, reason=None):
