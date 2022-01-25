@@ -5,6 +5,8 @@ import re
 import subprocess
 import sys
 
+DEFAULT_TELOP = "In-Vehicle Recorder 1.0"
+
 
 def file_extension(file):
     return os.path.splitext(os.path.basename(file))[1]
@@ -79,6 +81,14 @@ def tracklog_file_name(date, sequence):
     date_part = date.strftime("%Y%m%d")
     seq_part = "" if sequence == 0 else (".%d" % sequence)
     return "tracklog-%s%s.gpx" % (date_part, seq_part)
+
+
+# Perform an atomic update to the specified file.
+def write(file, text):
+    temp_file = "{}.tmp".format(file)
+    with open(temp_file, mode="w") as f:
+        f.write(text)
+    os.rename(temp_file, file)
 
 
 # Notify the user of the specified text.

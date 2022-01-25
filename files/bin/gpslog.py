@@ -125,18 +125,12 @@ def position(socket):
 def start_gps_recording(file, logdir):
     ivr.log("start gps logging service: {}".format(file))
 
-    def write(text):
-        temp_file = "{}.tmp".format(file)
-        with open(temp_file, mode="w") as f:
-            f.write(text)
-        os.rename(temp_file, file)
-
-    write("Connecting GPSd...")
+    ivr.write(file, "Connecting GPSd...")
     socket = gps3.GPSDSocket()
     socket.connect()
     socket.watch()
 
-    write("Detecting GPS device...")
+    ivr.write(file, "Detecting GPS device...")
     delta = None
     while True:
 
@@ -154,10 +148,10 @@ def start_gps_recording(file, logdir):
             if delta is not None:
                 tm = datetime.datetime.now() + delta
                 tm_text = tm.strftime("%T")
-                write("[GPS {}] {}".format(tm_text, text))
+                ivr.write(file, "[GPS {}] {}".format(tm_text, text))
                 now = datetime.datetime.now() + delta
             else:
-                write(text)
+                ivr.write(file, text)
                 now = datetime.datetime.now()
             tm = datetime.datetime(now.year, now.month, now.day, now.hour, now.minute)
             tm = tm + datetime.timedelta(seconds=1)

@@ -4,10 +4,12 @@
 # capacity.
 #
 import argparse
+import datetime
 import os
 import re
 import signal
 import sys
+import time
 import traceback
 
 import ivr
@@ -56,6 +58,19 @@ def ensure_storage_space(dir, file_pattern, max_capacity, min_files):
     return
 
 
+def check_for_updates_to_the_telop(file):
+    overwrite = False
+    if not os.path.isfile(file):
+        overwrite = True
+    else:
+        delta = datetime.timedelta(minutes=10)
+        tm = os.stat(file).st_mtime
+        overwrite = datetime.datetime.fromtimestamp(tm) + delta
+    if overwrite:
+        ivr.write(file, ivr.DEFAULT_TELOP)
+    return
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Convert and remove recorded footage files"
@@ -67,6 +82,15 @@ if __name__ == "__main__":
         default=ivr.data_dir(),
         help="Directory where the footage and other files are stored (default: {})".format(
             ivr.data_dir()
+        ),
+    )
+    parser.add_argument(
+        "-t",
+        "--telop",
+        metavar="FILE",
+        default=ivr.telop_file(),
+        help="File that contains text to overlay on the footage (default: {})".format(
+            ivr.telop_file()
         ),
     )
     parser.add_argument(
@@ -100,6 +124,7 @@ if __name__ == "__main__":
 
         args = parser.parse_args()
         dir = args.dir
+        telop = args.telop
         limit_footage = ivr.without_aux_unit(args.limit_footage)
         limit_tracklog = ivr.without_aux_unit(args.limit_tracklog)
         interval = args.interval
@@ -107,6 +132,7 @@ if __name__ == "__main__":
         while True:
             ensure_storage_space(dir, ivr.FOOTAGE_FILE_PATTERN, limit_footage, 2)
             ensure_storage_space(dir, ivr.TRACKLOG_FILE_PATTERN, limit_tracklog, 2)
+            check_for_updates_to_the_telop(telop)
             time.sleep(interval)
 
     except ivr.TermException as e:

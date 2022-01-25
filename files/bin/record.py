@@ -234,8 +234,7 @@ if __name__ == "__main__":
 
         # create an empty telop file assuming that it's before the GPS logger is started
         if not os.path.isfile(telop):
-            with open(telop, mode="w"):
-                pass
+            ivr.write(telop, ivr.DEFAULT_TELOP)
 
         ivr.beep("IVR starts to recording.")
         while True:
