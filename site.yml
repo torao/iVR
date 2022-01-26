@@ -36,12 +36,22 @@
 
   # # *******************************
   # - name: Configure /tmp to be mounted with tmpfs
-  #   ansible.posix.mount:
+  #   mount:
   #     src: tmpfs
   #     path: /tmp
   #     opts: defaults,size=32m
   #     state: mounted
   #     fstype: tmpfs
+  #   become: true
+
+  # - name: Configure /tmp/ivr to be mounted with tmpfs
+  #   ansible.posix.mount:
+  #     src: tmpfs
+  #     path: /tmp/ivr
+  #     opts: defaults,size=1m
+  #     state: mounted
+  #     fstype: tmpfs
+  #   become: true
 
   # # *******************************
   # - name: "Make sure that the USB storage is attached to /dev/sda1"
@@ -87,7 +97,7 @@
   #     state: link
   #   become: true
   #   loop:
-  #     - { path: "{{ivr_home}}/tmp", src: /tmp }
+  #     - { path: "{{ivr_home}}/tmp", src: /tmp/ivr }
   #     - { path: "{{ivr_home}}/data", src: /mnt/sda1 }
 
   # *******************************
