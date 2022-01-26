@@ -86,6 +86,21 @@ def write(file, text):
             break
 
 
+# Write the process ID to the PID file.
+def save_pid():
+    pid_file = os.path.join(temp_dir(), "{}.pid".format(os.path.basename(sys.argv[0])))
+    write(pid_file, "{}".format(os.getpid()))
+    return pid_file
+
+
+# Write the process ID to the PID file.
+def remove_pid():
+    pid_file = os.path.join(temp_dir(), "{}.pid".format(os.path.basename(sys.argv[0])))
+    if os.path.isfile(pid_file):
+        os.remove(pid_file)
+    return
+
+
 # Notify the user of the specified text.
 def beep(speech):
     cmd = ["espeak", "-p", "30", "-g", "11", "notice. {}".format(speech)]

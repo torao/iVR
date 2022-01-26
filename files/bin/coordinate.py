@@ -117,6 +117,7 @@ if __name__ == "__main__":
     )
 
     try:
+        ivr.save_pid()
 
         # register SIGTERM handler
         signal.signal(signal.SIGTERM, ivr.term_handler)
@@ -132,7 +133,7 @@ if __name__ == "__main__":
 
         total_used = limit_footage + limit_tracklog + limit_log
         ivr.log(
-            "max capacity: {} = footage{} + tracklog:{} + log:{}".format(
+            "available storage: {} = {}:footage + {}:tracklog + {}:log".format(
                 ivr.with_aux_unit(total_used),
                 ivr.with_aux_unit(limit_footage),
                 ivr.with_aux_unit(limit_tracklog),
@@ -155,3 +156,5 @@ if __name__ == "__main__":
         ivr.log("IVR terminates the cleaning by an error")
         ivr.beep("cleaning has stopped due to an error")
         sys.exit(1)
+    finally:
+        ivr.remove_pid()

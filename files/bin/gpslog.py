@@ -182,6 +182,7 @@ if __name__ == "__main__":
     )
 
     try:
+        ivr.save_pid()
 
         # register SIGTERM handler
         signal.signal(signal.SIGTERM, ivr.term_handler)
@@ -202,3 +203,5 @@ if __name__ == "__main__":
         ivr.log("IVR terminates the GPS logging by an error")
         ivr.beep("GPS logging has stopped due to an error")
         sys.exit(1)
+    finally:
+        ivr.remove_pid()

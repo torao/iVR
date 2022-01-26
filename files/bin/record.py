@@ -32,11 +32,6 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     interval = (end - now).seconds
     t1 = now.strftime("%F %T")
     t2 = end.time()
-    ivr.log(
-        "start recording: {} between {} and {} ({} sec)".format(
-            output, t1, t2, interval
-        )
-    )
 
     telop = [
         "format=pix_fmts=yuv420p",
@@ -98,12 +93,17 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     )
     ffmpeg_process = proc
     try:
-        ivr.log("start ffmpeg: %s" % " ".join(proc.args))
+
+        ivr.log("start recording: {} => ".format(" ".join(proc.args), proc.pid))
+        ivr.log("  to {} between {} and {} ({} sec)".format(output, t1, t2, interval))
         line = proc.stderr.readline()
         while line:
             ivr.log("FFmpeg: {}".format(line.decode("utf-8").strip()))
             line = proc.stderr.readline()
+
     finally:
+        if proc.returncode is None:
+            proc.terminate()
         ffmpeg_process = None
 
     ivr.log("recorded the footage: %s" % output)
@@ -216,6 +216,7 @@ if __name__ == "__main__":
     )
 
     try:
+        ivr.save_pid()
 
         # register SIGTERM handler
         signal.signal(signal.SIGTERM, term_handler)
@@ -251,3 +252,5 @@ if __name__ == "__main__":
         ivr.log("IVR terminates the recording by an error")
         ivr.beep("footage recording has stopped due to an error")
         sys.exit(1)
+    finally:
+        ivr.remove_pid()
