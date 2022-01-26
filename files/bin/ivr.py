@@ -53,20 +53,7 @@ def without_aux_unit(num):
 
 FOOTAGE_FILE_PATTERN = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.[a-zA-Z0-9]+"
 TRACKLOG_FILE_PATTERN = r"tracklog-(\d{4})(\d{2})(\d{2})\.gpx"
-
-# Returns the recording date if the file is a footage file recorded by IVR.
-# If the file doesn't exist or isn't a footage, returns None.
-def date_of_footage_file(file):
-    if os.path.isfile(file):
-        matcher = re.fullmatch(FOOTAGE_FILE_PATTERN, os.path.basename(file))
-        if matcher is not None:
-            year = int(matcher[1])
-            month = int(matcher[2])
-            date = int(matcher[3])
-            hour = int(matcher[4])
-            date = datetime.datetime(year, month, date, hour)
-            return date
-    return None
+IVRLOG_FILE_PATTERN = r"ivr-(\d{4})(\d{2})(\d{2})\.log"
 
 
 # Generate a footage file name from the specified date and sequence number.
@@ -85,10 +72,18 @@ def tracklog_file_name(date, sequence):
 
 # Perform an atomic update to the specified file.
 def write(file, text):
-    temp_file = "{}.tmp".format(file)
-    with open(temp_file, mode="w") as f:
-        f.write(text)
-    os.rename(temp_file, file)
+    i = 0
+    while True:
+        seq = "" if i == 0 else ".{}".format(i)
+        temp_file = "{}{}.tmp".format(file, seq)
+        try:
+            with open(temp_file, mode="x") as f:
+                f.write(text)
+        except FileExistsError:
+            i += 1
+        else:
+            os.rename(temp_file, file)
+            break
 
 
 # Notify the user of the specified text.
@@ -99,31 +94,22 @@ def beep(speech):
 
 # Output the specified message as log to the standard output.
 def log(msg):
-
-    # refer to the file where the log is output
-    global _log_file
-    global _log_lock_file
-    if _log_file is None:
-        _log_file = os.path.join(data_dir(), "ivr.log")
-        _log_lock_file = os.path.join(temp_dir(), "ivr_log.lock")
-    log_file = _log_file
-    lock_file = _log_lock_file
+    now = datetime.datetime.now()
+    log_file = "ivr-%s.log" % now.strftime("%Y%m%d")
 
     # write log with exclusive lock
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    tm = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     program = os.path.basename(sys.argv[0])
-    message = "[{}] {} - {}\n".format(now, program, msg)
-    with open(lock_file, mode="w") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        with open(log_file, mode="a") as f:
-            f.write(message)
-        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+    message = "[{}] {} - {}\n".format(tm, program, msg)
+    file = os.path.join(data_dir(), log_file)
+    with open(file, mode="a") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        f.write(message)
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     return
 
 
 _home_directory = None  # Home directory
-_log_file = None  # Log file
-_log_lock_file = None  # Log write-lock file
 
 
 # Refer the home directory of IVR.

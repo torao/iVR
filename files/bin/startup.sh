@@ -9,6 +9,6 @@
 # The appropriate device can be found by `arecord --list-devices`.
 #DEVICE_AUDIO=1,0
 
-python3 $(dirname $0)/gpslog.py &
-python3 $(dirname $0)/coordinate.py -lf 1G -lt 100k &
+python3 $(dirname $0)/gpslog.py > /dev/null 2>&1 &
+python3 $(dirname $0)/coordinate.py -lf 3G -lt 1M &
 python3 $(dirname $0)/record.py &

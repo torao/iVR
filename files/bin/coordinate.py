@@ -127,11 +127,22 @@ if __name__ == "__main__":
         telop = args.telop
         limit_footage = ivr.without_aux_unit(args.limit_footage)
         limit_tracklog = ivr.without_aux_unit(args.limit_tracklog)
+        limit_log = ivr.without_aux_unit("2M")
         interval = args.interval
 
+        total_used = limit_footage + limit_tracklog + limit_log
+        ivr.log(
+            "max capacity: {} = footage{} + tracklog:{} + log:{}".format(
+                ivr.with_aux_unit(total_used),
+                ivr.with_aux_unit(limit_footage),
+                ivr.with_aux_unit(limit_tracklog),
+                ivr.with_aux_unit(limit_log),
+            )
+        )
         while True:
             ensure_storage_space(dir, ivr.FOOTAGE_FILE_PATTERN, limit_footage, 2)
             ensure_storage_space(dir, ivr.TRACKLOG_FILE_PATTERN, limit_tracklog, 2)
+            ensure_storage_space(dir, ivr.IVRLOG_FILE_PATTERN, limit_log, 2)
             check_for_updates_to_the_telop(telop)
             time.sleep(interval)
 
