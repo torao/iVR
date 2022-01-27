@@ -17,6 +17,16 @@ FOOTAGE_FILE_EXT = "avi"
 # FFmpeg subprocess
 ffmpeg_process = None
 
+# Exception raised when FFmpeg doesn't exit the specified time is exceeded.
+class TimeoutException(Exception):
+    pass
+
+
+# A handler that only throws an TimeoutException when FFmpeg timeout is detected.
+def timeout_handler(signum, frame):
+    raise TimeoutException("")
+
+
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
 def start_camera_recording(dev_video, dev_audio, telop_file, dir):
@@ -30,6 +40,10 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     now = datetime.datetime.now()
     end = datetime.datetime(now.year, now.month, now.day, now.hour) + delta
     interval = (end - now).seconds
+    if interval == 0:
+        # to avoid running with -t 0 in cases like now=20:59:59.940
+        end = end + delta
+        interval = (end - now).seconds
     t1 = now.strftime("%F %T")
     t2 = end.time()
 
@@ -93,6 +107,8 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     )
     ffmpeg_process = proc
     try:
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(interval + 15)
 
         ivr.log("start recording: {} => ".format(" ".join(proc.args), proc.pid))
         ivr.log("  to {} between {} and {} ({} sec)".format(output, t1, t2, interval))
@@ -101,10 +117,13 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
             ivr.log("FFmpeg: {}".format(line.decode("utf-8").strip()))
             line = proc.stderr.readline()
 
+    except TimeoutException:
+        ivr.log("WARNING: FFmpeg didn't finish after {} sec; aborting".format(interval))
     finally:
+        ffmpeg_process = None
+        signal.alarm(0)
         if proc.returncode is None:
             proc.terminate()
-        ffmpeg_process = None
 
     ivr.log("recorded the footage: %s" % output)
     return (proc.returncode, output)
