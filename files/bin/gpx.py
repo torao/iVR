@@ -42,6 +42,7 @@ def add_track_log(dir, now, ds):
         f.write(gpx_track(lat, lon, ds).encode("utf-8"))
         f.write(gpx_trailer().encode("utf-8"))
         f.truncate(f.tell())
+        f.flush()
 
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 

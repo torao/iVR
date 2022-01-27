@@ -79,6 +79,7 @@ def write(file, text):
         try:
             with open(temp_file, mode="x") as f:
                 f.write(text)
+                f.flush()
         except FileExistsError:
             i += 1
         else:
