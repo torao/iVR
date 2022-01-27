@@ -65,7 +65,6 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     # -vsync: When a frame isn't received from the camera at the specified frame rate, it
     #         deletes or duplicates the frame to achieve the specified frame rate.
     command.extend(["-f", "v4l2"])
-    command.extend(["-vsync", "cfr"])
     command.extend(["-thread_queue_size", "8192"])
     command.extend(["-s", "640x360"])
     command.extend(["-framerate", "30"])
@@ -76,6 +75,7 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     # exit with code -9 and the video file isn't playable at all.
     # -channel_layout: to avoid warning message "Guessed Channel Layout for Input Stream #1.0 : mono"
     if False:
+        command.extend(["-vsync", "cfr"])  # constant frame rate to prevent sound drift
         command.extend(["-f", "alsa"])
         command.extend(["-thread_queue_size", "8192"])
         command.extend(["-ac", "1"])  # the number of channels: 1=mono
@@ -92,6 +92,9 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
         command.extend(["-c:v", "mjpeg"])
         command.extend(["-q:v", "3"])
     elif FOOTAGE_FILE_EXT == "mp4":
+        command.extend(["-c:v", "h264_v4l2m2m"])
+        command.extend(["-pix_fmt", "yuv420p"])
+    elif FOOTAGE_FILE_EXT == "avi":
         command.extend(["-c:v", "h264_v4l2m2m"])
         command.extend(["-pix_fmt", "yuv420p"])
 
