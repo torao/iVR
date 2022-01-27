@@ -30,12 +30,7 @@ def ensure_storage_space(dir, file_pattern, max_capacity, min_files):
     for f in os.listdir(dir):
         if re.fullmatch(file_pattern, f):
             file = os.path.join(dir, f)
-            if os.path.getsize(file) == 0:
-                # remove if the file is empty
-                reason = "empty file"
-                remove(file, reason)
-            else:
-                files.append((os.stat(file).st_mtime, file))
+            files.append((os.stat(file).st_mtime, file))
     files.sort(reverse=True)
     files = [f for _, f in files]
 
