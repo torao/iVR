@@ -1,4 +1,4 @@
-# python3 record.py 2> /dev/null &
+#!/usr/bin/env python3
 #
 import argparse
 import datetime

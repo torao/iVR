@@ -1,4 +1,4 @@
-# python3 archive.py 2> /dev/null &
+#!/usr/bin/env python3
 #
 # Remove recorded footage, GPX logs, and other files until their total size is less than the maximum
 # capacity.
