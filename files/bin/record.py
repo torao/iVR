@@ -29,7 +29,7 @@ def timeout_handler(signum, frame):
 
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
-def start_camera_recording(dev_video, dev_audio, telop_file, dir):
+def start_camera_recording(dev_video, dev_audio, telop_file, dir, sampling_rate):
     global ffmpeg_process
 
     # determine unique file name
@@ -57,7 +57,7 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     ]
 
     command = ["ffmpeg"]
-    command.extend(["-nostdin", "-xerror"])
+    command.extend(["-nostdin"])
     command.extend(["-loglevel", "warning"])
     command.extend(["-t", str(interval)])
 
@@ -71,16 +71,14 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
     command.extend(["-i", dev_video])
 
     # audio input options
-    # NOTE: The audio will not be recorded because once ALSA's buffer xrun error occurs, FFmpeg
-    # exit with code -9 and the video file isn't playable at all.
     # -channel_layout: to avoid warning message "Guessed Channel Layout for Input Stream #1.0 : mono"
-    if False:
-        command.extend(["-vsync", "cfr"])  # constant frame rate to prevent sound drift
+    if dev_audio is not None:
         command.extend(["-f", "alsa"])
         command.extend(["-thread_queue_size", "8192"])
         command.extend(["-ac", "1"])  # the number of channels: 1=mono
         command.extend(["-channel_layout", "mono"])
-        command.extend(["-ar", "8k"])  # audio sampling rate
+        if sampling_rate is not None:
+            command.extend(["-ar", sampling_rate])  # audio sampling rate
         command.extend(["-i", "hw:{}".format(dev_audio)])
 
     # video filter
@@ -88,9 +86,8 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir):
 
     # video / audio output options
     if FOOTAGE_FILE_EXT == "mkv":
-        # -q:v: JPEG quality (2-31)
         command.extend(["-c:v", "mjpeg"])
-        command.extend(["-q:v", "3"])
+        command.extend(["-q:v", "3"])  # -q:v: JPEG quality (2-31)
     elif FOOTAGE_FILE_EXT == "mp4":
         command.extend(["-c:v", "h264_v4l2m2m"])
         command.extend(["-pix_fmt", "yuv420p"])
@@ -234,7 +231,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v",
         "--video",
+        metavar="DEVICE",
         help="Camera device to be used, such as /dev/video0 (default: auto detect)",
+    )
+    parser.add_argument(
+        "-a",
+        "--with-audio",
+        action="store_true",
+        help="(beta) Record audio with video (default: no audio)",
+    )
+    parser.add_argument(
+        "-as",
+        "--audio-sampling-rate",
+        metavar="SAMPLING_RATE",
+        help="Sampling rate for audio recording (default: 8k)",
     )
 
     try:
@@ -248,12 +258,16 @@ if __name__ == "__main__":
         dir = args.dir
         telop = args.telop
         dev_video = args.video
+        with_audio = args.with_audio
+        sampling_rate = args.audio_sampling_rate
 
         if dev_video is None:
             dev_video_title, dev_video = detect_default_usb_camera()
             ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
-        dev_autio_title, dev_audio = detect_default_usb_audio()
-        ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
+        dev_audio = None
+        if with_audio:
+            dev_autio_title, dev_audio = detect_default_usb_audio()
+            ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
 
         # create an empty telop file assuming that it's before the GPS logger is started
         if not os.path.isfile(telop):
@@ -261,7 +275,9 @@ if __name__ == "__main__":
 
         ivr.beep("IVR starts to recording.")
         while True:
-            ret, file = start_camera_recording(dev_video, dev_audio, telop, dir)
+            ret, file = start_camera_recording(
+                dev_video, dev_audio, telop, dir, sampling_rate
+            )
             ivr.beep("The recording has been switched with return code {}.".format(ret))
             ivr.log("end recording: {} -> {}".format(ret, file))
 

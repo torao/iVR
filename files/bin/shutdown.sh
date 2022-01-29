@@ -2,7 +2,9 @@
 # Script for IVR shutdown.
 
 function shutdown(){
-    local file="$(dirname $0)/../tmp/$1.pid"
+  local file="$(dirname $0)/../tmp/$1.pid"
+  if [ -f $file ]
+  then
     local pid=`cat $file`
     if [ ! -z "$pid" ]
     then
@@ -13,9 +15,10 @@ function shutdown(){
         rm $file
       fi
     fi
+  fi
 }
 
 shutdown gpslog.py
 shutdown coordinate.py
 shutdown record.py
-killall ffmpeg
+killall ffmpeg > /dev/null
