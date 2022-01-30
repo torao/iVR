@@ -29,7 +29,9 @@ def timeout_handler(signum, frame):
 
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
-def start_camera_recording(dev_video, dev_audio, telop_file, dir, sampling_rate):
+def start_camera_recording(
+    dev_video, dev_audio, telop_file, dir, sampling_rate, video_bitrate
+):
     global ffmpeg_process
 
     # determine unique file name
@@ -96,7 +98,7 @@ def start_camera_recording(dev_video, dev_audio, telop_file, dir, sampling_rate)
         command.extend(["-pix_fmt", "yuv420p"])
 
     # output file
-    command.extend(["-b:v", "768k"])
+    command.extend(["-b:v", video_bitrate])
     command.extend([output])
 
     proc = subprocess.Popen(
@@ -235,6 +237,13 @@ if __name__ == "__main__":
         help="Camera device to be used, such as /dev/video0 (default: auto detect)",
     )
     parser.add_argument(
+        "-vbr",
+        "--video-bitrate",
+        metavar="BITRATE",
+        default="768k",
+        help="Bitrate for video recording (default: 768k)",
+    )
+    parser.add_argument(
         "-a",
         "--with-audio",
         action="store_true",
@@ -260,6 +269,7 @@ if __name__ == "__main__":
         dev_video = args.video
         with_audio = args.with_audio
         sampling_rate = args.audio_sampling_rate
+        video_bitrate = args.video_bitrate
 
         if dev_video is None:
             dev_video_title, dev_video = detect_default_usb_camera()
@@ -276,7 +286,7 @@ if __name__ == "__main__":
         ivr.beep("IVR starts to recording.")
         while True:
             ret, file = start_camera_recording(
-                dev_video, dev_audio, telop, dir, sampling_rate
+                dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
             )
             ivr.beep("The recording has been switched with return code {}.".format(ret))
             ivr.log("end recording: {} -> {}".format(ret, file))
