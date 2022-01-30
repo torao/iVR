@@ -73,7 +73,10 @@ def move_to_suffix_position(f, elems):
     while len(bytes) < 8 * 1024:
 
         # consume the pattern from the head, and when all are gone, match the pattern
-        text = bytes.decode("utf-8").strip()
+        try:
+            text = bytes.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            return False
         for elem in elems:
             if text.startswith(elem):
                 text = text[len(elem)].strip()
