@@ -146,10 +146,10 @@ def start_gps_recording(file, logdir):
         # to reduce the load, a few seconds are slipped without actually being acquired from GPS
         for _ in range(5):
             if delta is not None:
-                tm = datetime.datetime.now() + delta
+                tm = datetime.datetime.now() - delta
                 tm_text = tm.strftime("%T")
                 ivr.write(file, "[GPS {}] {}".format(tm_text, text))
-                now = datetime.datetime.now() + delta
+                now = datetime.datetime.now() - delta
             else:
                 ivr.write(file, text)
                 now = datetime.datetime.now()
