@@ -60,7 +60,9 @@ def check_for_updates_to_the_telop(file):
     else:
         delta = datetime.timedelta(minutes=10)
         tm = os.stat(file).st_mtime
-        overwrite = datetime.datetime.fromtimestamp(tm) + delta
+        overwrite = (
+            datetime.datetime.fromtimestamp(tm) + delta < datetime.datetime.now()
+        )
     if overwrite:
         ivr.write(file, ivr.DEFAULT_TELOP)
     return
