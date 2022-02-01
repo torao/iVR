@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 
-DEFAULT_TELOP = "In-Vehicle Recorder 1.0"
+DEFAULT_TELOP = "iVR 1.0"
 
 
 def file_extension(file):

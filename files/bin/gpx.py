@@ -100,8 +100,8 @@ def gpx_header(tm):
 <gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.topografix.com/GPX/1/1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" version="1.1" creator="https://gpx.studio">
   <metadata>
     <author>
-        <name>In-Vehicle Recorder</name>
-        <link href="https://github.com/torao/in-vehicle-recorder"/>
+        <name>iVR</name>
+        <link href="https://github.com/torao/iVR"/>
         <time>{}</time>
     </author>
   </metadata>
