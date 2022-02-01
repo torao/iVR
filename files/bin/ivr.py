@@ -51,16 +51,16 @@ def without_aux_unit(num):
     return float(num.replace(",", "")) * multi
 
 
-FOOTAGE_FILE_PATTERN = r"footage-(\d{4})(\d{2})(\d{2})\.(\d{2})(\.(\d+))?\.[a-zA-Z0-9]+"
+FOOTAGE_FILE_PATTERN = r"footage-(\d{6})-(\d{4})(\d{2})(\d{2})(\d{2})\.[a-zA-Z0-9]+"
 TRACKLOG_FILE_PATTERN = r"tracklog-(\d{4})(\d{2})(\d{2})\.gpx"
 IVRLOG_FILE_PATTERN = r"ivr-(\d{4})(\d{2})(\d{2})\.log"
 
 
 # Generate a footage file name from the specified date and sequence number.
 def footage_file_name(date, sequence, extension):
-    date_part = date.strftime("%Y%m%d.%H")
-    seq_part = "" if sequence == 0 else (".%d" % sequence)
-    return "footage-%s%s.%s" % (date_part, seq_part, extension)
+    date_part = date.strftime("%Y%m%d%H")
+    seq_part = "{:06d}".format(sequence % 1000000)
+    return "footage-%s-%s.%s" % (seq_part, date_part, extension)
 
 
 # Generate a track-log file name from the specified date and sequence number.
@@ -88,15 +88,21 @@ def write(file, text):
 
 
 # Write the process ID to the PID file.
-def save_pid():
-    pid_file = os.path.join(temp_dir(), "{}.pid".format(os.path.basename(sys.argv[0])))
-    write(pid_file, "{}".format(os.getpid()))
+def save_pid(prog=None, pid=None):
+    if prog is None:
+        prog = os.path.basename(sys.argv[0])
+    if pid is None:
+        pid = os.getpid()
+    pid_file = os.path.join(temp_dir(), "{}.pid".format(prog))
+    write(pid_file, "{}".format(pid))
     return pid_file
 
 
 # Write the process ID to the PID file.
-def remove_pid():
-    pid_file = os.path.join(temp_dir(), "{}.pid".format(os.path.basename(sys.argv[0])))
+def remove_pid(prog=None):
+    if prog is None:
+        prog = os.path.basename(sys.argv[0])
+    pid_file = os.path.join(temp_dir(), "{}.pid".format(prog))
     if os.path.isfile(pid_file):
         os.remove(pid_file)
     return

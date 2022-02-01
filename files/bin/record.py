@@ -52,13 +52,13 @@ def start_camera_recording(
     telop = [
         "format=pix_fmts=yuv420p",
         "drawbox=y=ih-16:w=iw:h=16:t=fill:color=black@0.4",
-        "drawtext='text=%{localtime\\:%F %T}:fontsize=12:fontcolor=#DDDDDD:x=4:y=h-12'",
-        "drawtext=textfile={}:fontsize=12:reload=1:fontcolor=#DDDDDD:x=140:y=h-12".format(
+        "drawtext=textfile={}:fontsize=12:reload=1:fontcolor=#DDDDDD:x=4:y=h-12".format(
             telop_file
         ),
     ]
 
     command = ["ffmpeg"]
+    command.extend(["-y"])
     command.extend(["-nostdin"])
     command.extend(["-loglevel", "warning"])
     command.extend(["-t", str(interval)])
@@ -112,6 +112,8 @@ def start_camera_recording(
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(interval + 15)
 
+        ivr.save_pid("ffmpeg", proc.pid)
+
         ivr.log("start recording: {} => ".format(" ".join(proc.args), proc.pid))
         ivr.log("  to {} between {} and {} ({} sec)".format(output, t1, t2, interval))
         line = proc.stderr.readline()
@@ -126,6 +128,7 @@ def start_camera_recording(
         signal.alarm(0)
         if proc.returncode is None:
             proc.terminate()
+        ivr.remove_pid("ffmpeg")
 
     ivr.log("recorded the footage: %s" % output)
     return (proc.returncode, output)
@@ -134,13 +137,31 @@ def start_camera_recording(
 # Create a new file name based on the specified datetime that doesn't overlap with any existing
 # footage file.
 def new_footage_file(dir, now, ext):
+
+    # read sequence from control file
+    sequence_file = os.path.join(ivr.data_dir(), ".control")
     i = 0
+    if os.path.exists(sequence_file):
+        with open(sequence_file, mode="r") as f:
+            i = int(f.read())
+
     while True:
+
+        # test for successful creation of a new file
         file_name = ivr.footage_file_name(now, i, ext)
         path = os.path.join(dir, file_name)
-        if not os.path.exists(path):
-            return path
-        i += 1
+        try:
+            with open(path, mode="x") as f:
+                pass
+        except FileExistsError:
+            i += 1
+            continue
+
+        # write sequence to control file
+        with open(sequence_file, mode="w") as f:
+            f.write(str(i + 1))
+
+        return path
 
 
 # Returns the device with the lowest number among the USB connected video devices from captured

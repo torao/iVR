@@ -4,6 +4,8 @@ import argparse
 import datetime
 import os
 import signal
+import statistics
+import subprocess
 import sys
 import time
 import traceback
@@ -39,6 +41,8 @@ DIRECTION_LABEL = [
 
 TZ = tzlocal.get_localzone()
 
+ACQUISION_INTERVAL_SECONDS = 5  # seconds
+
 
 def parse_time(tm):
     if tm is None or tm == "n/a":
@@ -47,17 +51,8 @@ def parse_time(tm):
     return tm.astimezone(TZ)
 
 
-def time_text(tm, ept):
-    tm = parse_time(tm)
-    if tm is None:
-        return "--:--:--"
-    tm = tm.strftime("%H:%M:%S")
-    ept = 0 if ept is None else int(float(ept))
-    return tm if ept == 0 else "{}±{}".format(tm, ept)
-
-
 def latlon_text(ll, ne, sw):
-    if ll is None or ll == "n/a":
+    if ll is None or ll == "n/a" or abs(float(ll)) <= 0.000001:
         return "---.----"
     else:
         ll = float(ll)
@@ -96,6 +91,7 @@ def direction(dir):
 
 
 def position(socket):
+    # see also: https://gpsd.gitlab.io/gpsd/gpsd_json.html
     ds = gps3.DataStream()
     begin = datetime.datetime.now()
     for new_data in socket:
@@ -104,8 +100,7 @@ def position(socket):
             ds.unpack(new_data)
             gps_time = parse_time(ds.TPV["time"])
             if gps_time is not None:
-                delta = now.astimezone(TZ) - gps_time
-                tm = time_text(ds.TPV["time"], ds.TPV["ept"])
+                delta = gps_time - now.astimezone(TZ)
                 lat = latlon_text(ds.TPV["lat"], "N", "S")
                 lon = latlon_text(ds.TPV["lon"], "E", "W")
                 alt = altitude_text(ds.TPV["alt"])
@@ -131,7 +126,8 @@ def start_gps_recording(file, logdir):
     socket.watch()
 
     ivr.write(file, "Detecting GPS device...")
-    delta = None
+    delta = datetime.timedelta()
+    ept = 0.0
     while True:
 
         # obtain gps position
@@ -144,20 +140,79 @@ def start_gps_recording(file, logdir):
             gpx.add_track_log(logdir, datetime.datetime.now(), ds)
 
         # to reduce the load, a few seconds are slipped without actually being acquired from GPS
-        for _ in range(5):
-            if delta is not None:
-                tm = datetime.datetime.now() - delta
-                tm_text = tm.strftime("%T")
-                ivr.write(file, "[GPS {}] {}".format(tm_text, text))
-                now = datetime.datetime.now() - delta
-            else:
-                ivr.write(file, text)
-                now = datetime.datetime.now()
+        for i in range(ACQUISION_INTERVAL_SECONDS):
+            tm = datetime.datetime.now() + delta
+            tm_text = tm.strftime("%F %T")
+            if ept >= 1.0:
+                tm_text = "{}±{}".format(tm_text, int(ept))
+            if current_delta is None:
+                tm_text = "{}*".format(tm_text)
+            ivr.write(file, "{} {}".format(tm_text, text))
+
+            if i == 0 and ds is not None and ds.TPV["ept"] is not None:
+                ept = float(ds.TPV["ept"])
+                if current_delta is not None:
+                    if correct_local_time(current_delta, ept):
+                        delta = datetime.timedelta()
+
+            now = datetime.datetime.now() + delta
             tm = datetime.datetime(now.year, now.month, now.day, now.hour, now.minute)
             tm = tm + datetime.timedelta(seconds=1)
             interval = (tm - now).microseconds / 1000 / 1000
             time.sleep(interval)
     return
+
+
+# Correct the local time when the difference from GPS time is large.
+# The local time on the Raspberry Pi is often very wrong since it doesn't have an RTC.
+def correct_local_time(delta, ept):
+    # don't use times with large measurement errors
+    if ept > 1.0:
+        return False
+
+    # record the GPS-local time difference
+    correct_local_time.deltas.append(delta.total_seconds())
+    while len(correct_local_time.deltas) > correct_local_time.max_delta:
+        correct_local_time.deltas.pop(0)
+
+    # no correct is made:
+    #   - if the samples are too few,
+    #   - if standard deviation is large,
+    #   - if the error with the local time is less than 5 seconds.
+    stddev = statistics.pstdev(correct_local_time.deltas)
+    mean = statistics.mean(correct_local_time.deltas)
+    samples = len(correct_local_time.deltas)
+    too_few_samples = samples < correct_local_time.min_delta
+    if too_few_samples or stddev * 2 * 2 > 10:
+        return False
+    if abs(mean) <= 5:
+        correct_local_time.deltas = []
+        return False
+
+    # correct local time
+    delta = datetime.timedelta(seconds=mean)
+    now = datetime.datetime.now()
+    tm = now + delta
+    tm_text = tm.strftime("%m/%d %H:%M:%S %Y")
+    tm_local = now.strftime("%F %T")
+    tm_gps = tm.strftime("%F %T")
+    drift = "{:+,.3f}±{:.3f}".format(mean, stddev * 2)
+    ivr.log("INFO: correcting local time: {} {} -> {}".format(tm_local, drift, tm_gps))
+    for cmd in [["sudo", "date", "-s", tm_text], ["sudo", "hwclock", "--systohc"]]:
+        subprocess.run(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    correct_local_time.deltas = []
+    ivr.log("INFO: local time corrected: {} {} -> {}".format(tm_local, drift, tm_gps))
+    return True
+
+
+correct_local_time.deltas = []
+correct_local_time.min_delta = 10
+correct_local_time.max_delta = 100
 
 
 if __name__ == "__main__":
