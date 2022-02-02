@@ -14,7 +14,7 @@ def add_track_log(dir, now, ds):
 
     lat = parse_float(ds.TPV["lat"])
     lon = parse_float(ds.TPV["lon"])
-    if lat is None or lon is None:
+    if lat is None or lon is None or abs(lat) < 0.000001 or abs(lon) < 0.000001:
         return
 
     not_exists = not os.path.exists(file) or os.path.getsize(file) == 0
