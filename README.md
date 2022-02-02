@@ -11,7 +11,7 @@ video recorder. It might be used for the following purposes:
 The current iVR version only stores video files and does NOT have the ability to distribute live
 video.
 
-<div><video controls src="/torao/iVR/tree/main/docs/footage-sample.mp4" muted="false"></video></div>
+https://user-images.githubusercontent.com/836654/152195811-4a69e739-bfb7-4dc1-8158-f9dd9cd90fbc.mp4
 
 ## Requirements
 
@@ -95,7 +95,7 @@ $ ansible-playbook -i hosts site.yml
 
 ## System Structure
 
-![Logitech C207n](/torao/iVR/tree/main/docs/system-boundary.png)
+![system-boundary](https://user-images.githubusercontent.com/836654/152196050-de549dc6-e55d-4c96-9122-d0dfad279cec.png)
 
 ## License
 
