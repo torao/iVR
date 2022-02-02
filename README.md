@@ -11,7 +11,7 @@ video recorder. It might be used for the following purposes:
 The current iVR version only stores video files and does NOT have the ability to distribute live
 video.
 
-<div><video controls src="docs/footage-sample.mp4" muted="false"></video></div>
+<div><video controls src="/torao/iVR/tree/main/docs/footage-sample.mp4" muted="false"></video></div>
 
 ## Requirements
 
@@ -47,9 +47,9 @@ size, they will be deleted in order starting with the oldest file.
 iVR is set up using Ansible. Therefore, you will have to configure your Raspberry Pi manually until
 it's able to login via ssh.
 
-You can setup iVR without Ansible by manually following the steps described in `site.yml`. If you
-are doing this operation for the sake of learning Linux, doing everything manually will help you
-understand the system.
+You can setup iVR without Ansible by manually following the steps described in
+[`site.yml`](/torao/iVR/tree/main/site.yml). If you are doing this operation for the sake of
+learning Linux, doing everything manually will help you understand the system.
 
 ### Work that must be done manually
 
@@ -64,9 +64,10 @@ connect to it externally via ssh.
 
 ### Modify Ansible configuration and iVR scripts
 
-Edit the [`hosts`](hosts) file to set the connection information for the target Raspberry Pi.
-For example, if you are setting up a Raspberry Pi for 192.168.0.12, modify the contents of the
-`hosts` file as follows, and if you have changed the ssh port or password, modify them as well.
+Edit the [`hosts`](/torao/iVR/tree/main/hosts) file to set the connection information for the target
+Raspberry Pi. For example, if you are setting up a Raspberry Pi for 192.168.0.12, modify the
+contents of the `hosts` file as follows, and if you have changed the ssh port or password, modify
+them as well.
 
 ```
 $ cat hosts
@@ -80,7 +81,8 @@ ansible_ssh_pass=raspberry
 ansible_ssh_sudo_pass=raspberry
 ```
 
-Then, edit [`startup.sh`](files/bin/startup.sh) to specify the options that fit your environment.
+Then, edit [`startup.sh`](/torao/iVR/tree/main/files/bin/startup.sh) to specify the options that
+fit your environment.
 
 ### Run Ansible Playbook
 
@@ -93,8 +95,8 @@ $ ansible-playbook -i hosts site.yml
 
 ## System Structure
 
-![Logitech C207n](docs/system-boundary.png)
+![Logitech C207n](/torao/iVR/tree/main/docs/system-boundary.png)
 
 ## License
 
-[MIT License](LICENSE)
+[MIT License](/torao/iVR/tree/main/LICENSE)
