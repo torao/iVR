@@ -58,8 +58,11 @@ $ sudo apt-get update -y && sudo apt-get upgrade -y
 $ sudo rpi-update
 ```
 
-If you want to configure iVR on your Raspberry Pi, you will need to install `git` and `ansible`
-first. After then, The `PATH` will be added in the `.profile` so that you may need to do
+The iVR uses Ansible for its setup. You can setup locally on the Raspberry Pi's own localhost, or
+remotely from Windows/macOS/Linux etc.
+
+If you want to configure iVR on your Raspberry Pi local, you will need to install `git` and
+`ansible` first. After then, The `PATH` will be added in the `.profile` so that you may need to do
 `. .profile`, or logout/login.
 
 ```
@@ -68,9 +71,9 @@ $ pip3 install ansible
 $ . ~/.profile
 ```
 
-Clone the iVR repository and edit `startup.sh` to set the appropriate data size limit for the USB
-storage to be used. For example, if you are using 128GB of USB storage, the values would be as
-follows:
+Both of local and remote, clone the iVR repository and edit `startup.sh` to set the appropriate data
+size limit for the USB storage to be used. For example, if you are using 128GB of USB storage, the
+values would be as follows:
 
 ```
 $ git clone https://github.com/torao/iVR.git
@@ -87,8 +90,7 @@ To configure iVR from the localhost of Raspberry Pi itself, run Ansible as follo
 $ ansible-playbook -i hosts --connection=local site.yml
 ```
 
-Or, you can also configure iVR remotely from a Windows, macOS, or Linux machine that already has
-git and ansible installed. In this case, configure the Raspberry Pi so that you can login using ssh,
+To configure iVR from the remote machine, configure the Raspberry Pi so that you can login using ssh,
 and replace `localhost` in the [`hosts`](/torao/iVR/tree/main/hosts) file with the hostname or IP
 address of the machine you want to setup.
 
@@ -119,11 +121,6 @@ pi  780  1  0 01:08 ?  00:00:00 python3 /opt/ivr/bin/record.py
 In addition, recording should have started and footage files and logs should have been generated in
 the `/opt/ivr/data/` directory. If one of the python processes fails to start, please refer to
 `/opt/ivr/data/ivr-YYYYMMDD.log` or `~/ivr-boot.log`.
-
-### Modify iVR scripts
-
-Then, edit [`startup.sh`](/torao/iVR/tree/main/files/bin/startup.sh) to specify the options that
-fit your environment.
 
 ## System Structure
 
