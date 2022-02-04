@@ -44,6 +44,31 @@ size, they will be deleted in order starting with the oldest file.
 
 ## Setup Your Raspberry Pi
 
+If you have just installed the Raspberry Pi OS, it is recommended that you update your firmware and
+system.
+
+```
+$ sudo apt-get update -y && sudo apt-get upgrade -y
+$ sudo rpi-update
+```
+
+Install `git` and `ansible`. The `PATH` will be added in the `.profile` so that you may need to do
+`. .profile`, or logout/login.
+
+```
+$ sudo apt install -y git python3-pip
+$ pip3 install ansible
+$ . ~/.profile
+```
+
+Clone this repository locally and run ansible.
+
+```
+$ git clone https://github.com/torao/iVR.git
+$ cd iVR
+$ ansible-playbook -i hosts --connection=local site.yml
+```
+
 iVR is set up using Ansible. Therefore, you will have to configure your Raspberry Pi manually until
 it's able to login via ssh.
 
