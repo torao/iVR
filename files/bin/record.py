@@ -203,7 +203,7 @@ def detect_default_usb_camera():
             ivr.log("WARNING: unknown device: %s" % line)
     if device is not None:
         return (title, device)
-    return None
+    return (None, None)
 
 
 # Get the card number and device number of the first USB audio device detected.
@@ -220,7 +220,7 @@ def detect_default_usb_audio():
         if matcher is not None:
             hw = "%d,%d" % (int(matcher[1]), int(matcher[2]))
             return (line.strip(), hw)
-    return None
+    return (None, None)
 
 
 # Stop the FFmpeg subprocess if it's running and a TermException will be thrown.

@@ -2,16 +2,19 @@
 
 The goal of iVR is to record long-term footage with information acquired from various sensor
 devices. This repository contains scripts and setups to turn your Raspberry Pi into a homebrew
-video recorder. It might be used for the following purposes:
+video recorder. iVR might be used for the following purposes:
 
 * **Security Camera**: for home, garage and warehouse
 * **Dashboard Camera**: install at the front or rear of the vehicle
 * **Observation**: landscape, plants, and animals
 
-The current iVR version only stores video files and does NOT have the ability to distribute live
-video.
-
 https://user-images.githubusercontent.com/836654/152195811-4a69e739-bfb7-4dc1-8158-f9dd9cd90fbc.mp4
+
+The iVR is intended to DIY a long time recording camera. Note that it's not a guarantee of reliable
+recording.
+
+The current iVR version only stores video files and does NOT have the ability to distribute live
+streaming. Also, audio recording is still unstable and is turned off by default.
 
 ## Requirements
 
@@ -44,6 +47,9 @@ size, they will be deleted in order starting with the oldest file.
 
 ## Setup Your Raspberry Pi
 
+Attach the USB storage that will be used to store the footage files, USB camera, and GPS receiver,
+and start up the Raspberry Pi.
+
 If you have just installed the Raspberry Pi OS, it is recommended that you update your firmware and
 system.
 
@@ -52,7 +58,8 @@ $ sudo apt-get update -y && sudo apt-get upgrade -y
 $ sudo rpi-update
 ```
 
-Install `git` and `ansible`. The `PATH` will be added in the `.profile` so that you may need to do
+If you want to configure iVR on your Raspberry Pi, you will need to install `git` and `ansible`
+first. After then, The `PATH` will be added in the `.profile` so that you may need to do
 `. .profile`, or logout/login.
 
 ```
@@ -61,62 +68,62 @@ $ pip3 install ansible
 $ . ~/.profile
 ```
 
-Clone this repository locally and run ansible.
+Clone the iVR repository and edit `startup.sh` to set the appropriate data size limit for the USB
+storage to be used. For example, if you are using 128GB of USB storage, the values would be as
+follows:
 
 ```
 $ git clone https://github.com/torao/iVR.git
 $ cd iVR
+$ vi files/bin/startup.sh
+...
+COORDINATE_OPTIONS+=" --limit-footage 120G"
+COORDINATE_OPTIONS+=" --limit-tracklog 5G"
+```
+
+To configure iVR from the localhost of Raspberry Pi itself, run Ansible as follows:
+
+```
 $ ansible-playbook -i hosts --connection=local site.yml
 ```
 
-iVR is set up using Ansible. Therefore, you will have to configure your Raspberry Pi manually until
-it's able to login via ssh.
-
-You can setup iVR without Ansible by manually following the steps described in
-[`site.yml`](/torao/iVR/tree/main/site.yml). If you are doing this operation for the sake of
-learning Linux, doing everything manually will help you understand the system.
-
-### Work that must be done manually
-
-In order to configure the Raspberry Pi with Ansible after installing the OS, you need to be able to
-connect to it externally via ssh.
-
-- Run `raspi-config`.
-  - Allow ssh connection (required).
-  - Your own system-specific settings such as WiFi, password, hostname, locale, and time zone
-    (optional).
-- Firmware update with `rpi-update`.
-
-### Modify Ansible configuration and iVR scripts
-
-Edit the [`hosts`](/torao/iVR/tree/main/hosts) file to set the connection information for the target
-Raspberry Pi. For example, if you are setting up a Raspberry Pi for 192.168.0.12, modify the
-contents of the `hosts` file as follows, and if you have changed the ssh port or password, modify
-them as well.
+Or, you can also configure iVR remotely from a Windows, macOS, or Linux machine that already has
+git and ansible installed. In this case, configure the Raspberry Pi so that you can login using ssh,
+and replace `localhost` in the [`hosts`](/torao/iVR/tree/main/hosts) file with the hostname or IP
+address of the machine you want to setup.
 
 ```
-$ cat hosts
+$ vi hosts
 [all]
-192.168.0.12
-
-[all:vars]
-ansible_ssh_port=22
-ansible_ssh_user=pi
-ansible_ssh_pass=raspberry
-ansible_ssh_sudo_pass=raspberry
+192.168.xxx.yyy
+...
+$ ansible-playbook -i hosts site.yml
 ```
+
+> You can also setup iVR without Ansible by manually following the steps described in
+> [`site.yml`](/torao/iVR/tree/main/site.yml). If you are doing this operation for the sake of
+> learning Linux, doing everything manually may help you understand the system.
+
+After Ansible has been successfully finished, making sure the camera and GPS receiver are connected
+and reboot your Raspberry Pi.
+
+When iVR starts correctly, you should see the following three python processes running.
+
+```
+$ ps -ef | grep python
+pi  778  1 83 01:08 ?  00:13:25 python3 /opt/ivr/bin/gpslog.py
+pi  779  1  0 01:08 ?  00:00:00 python3 /opt/ivr/bin/coordinate.py
+pi  780  1  0 01:08 ?  00:00:00 python3 /opt/ivr/bin/record.py
+```
+
+In addition, recording should have started and footage files and logs should have been generated in
+the `/opt/ivr/data/` directory. If one of the python processes fails to start, please refer to
+`/opt/ivr/data/ivr-YYYYMMDD.log` or `~/ivr-boot.log`.
+
+### Modify iVR scripts
 
 Then, edit [`startup.sh`](/torao/iVR/tree/main/files/bin/startup.sh) to specify the options that
 fit your environment.
-
-### Run Ansible Playbook
-
-Run the Ansible Playbook to set it up. At this time, run the Ansible with the USB storage device
-used for iVR recording installed.
-
-```
-$ ansible-playbook -i hosts site.yml
-```
 
 ## System Structure
 
