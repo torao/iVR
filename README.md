@@ -1,8 +1,7 @@
 # iVR: Multi-Purpose Video Recorder for Raspberry Pi
 
-The goal of iVR is to record long-term footage with information acquired from various sensor
-devices. This repository contains scripts and setups to turn your Raspberry Pi into a homebrew
-video recorder. iVR might be used for the following purposes:
+The goal of iVR is to record long-term footage, either offline or online, with information acquired from various sensor devices. This repository contains scripts and setups to turn your Raspberry Pi
+into a homebrew footage recorder. iVR might be used for the following purposes:
 
 * **Security Camera**: for home, garage and warehouse
 * **Dashboard Camera**: install at the front or rear of the vehicle
@@ -10,8 +9,8 @@ video recorder. iVR might be used for the following purposes:
 
 https://user-images.githubusercontent.com/836654/152195811-4a69e739-bfb7-4dc1-8158-f9dd9cd90fbc.mp4
 
-The iVR is intended to DIY a long time recording camera. Note that it's not a guarantee of reliable
-recording.
+Note, however, that iVR is intended to be a DIY footage recording device and does NOT guarantee
+reliable footage recording.
 
 The current iVR version only stores video files and does NOT have the ability to distribute live
 streaming. Also, audio recording is still unstable and is turned off by default.
@@ -19,36 +18,70 @@ streaming. Also, audio recording is still unstable and is turned off by default.
 ## Requirements
 
 * Raspberry Pi or Raspberry Pi Zero:
-  * 512MB+ Memory
+  * 512MB+ memory
   * H.264 hardware encoder
   * Recommends quad-core CPU model
+  * Latest [Raspberry Pi OS](https://www.raspberrypi.com/software/) (raspbian)
+    * With a few modifications, it may be available for other Linux operating systems
 * USB storage:
+  * Formatted in FAT32
   * Recommends 64GB+ (footage 60GB+, tracklog 2GB+)
-  * Requires 280～360MB per hour
-  * It doesn't matter if it's flash memory or HDD
+    * Requires about 280MB to 360MB per hour
+  * Flash memory or HDD is fine
 * Camera:
   * 30fps+
-  * Recommends generic USB camera (MIPI camera module is also possible by directly specifying the device file)
+  * Recommends generic USB camera
+    * MIPI camera module is also possible by directly specifying the device file
 * GPS receiver
-  * needs to be recognizable by `gpsd`
-  * It's possible to use without GPS receiver, then the time and location information will not be
+  * Needs to be recognizable by `gpsd`
+  * Possible to use without GPS receiver, then the time and location information will not be
     displayed.
+* Speaker
+  * Optional, but recommended to notify errors and drives
+  * USB, 3.5mm jack, HDMI, or bluetooth
 
 ## Features
 
-The USB storage installed in the Raspberry Pi will be stored the following information:
+### Data Recording
 
-* `footage-nnnnnn-YYYYMMDDHH.avi` - A video with time and location information on it.
-* `tracklog-YYYYMMDD.gpx` - Location (a format that can be used by some location-based services).
+The USB storage attached to the Raspberry Pi will be stored the following information:
+
+* `footage-nnnnnn-YYYYMMDDHH.avi` - Video with time and location information on it.
+* `tracklog-YYYYMMDD.gpx` - GPS positioning records.
 * `ivr-YYYYMMDD.log` - Application log.
 
 These files will be switched every hour or day. If the total size of the files exceeds the allowable
 size, they will be deleted in order starting with the oldest file.
 
+#### Footage File
+
+The footage AVI file is a format that allows you to play back the video up to the point just before
+the interruption, even if there is a sudden power failure.
+This format can be played by Windows and Linux LVC. It can also be converted to MP4 as follows:
+
+```
+$ ffmpeg -i footage-xxx.avi footage-xxx.mp4
+```
+
+#### GPS Location File
+
+GPS positioning records are saved in GPX format, which can be used by some location-based services
+such as Google Earth.
+
+The end of the file is often broken by sudden power-off, but it's a plain text (XML) file and can
+be fixed manually :)
+
+### Headless and Offline Environment
+
+Errors and notifications are notified by sound.
+
+Raspberry Pi doesn't have an RTC, so if it's not connected to a network (and cannot be synchronized
+with NTP server), the local time will deviate significantly when the power is turned on and off.
+The iVR has the ability to adjust the local time using the GPS time.
+
 ## Setup Your Raspberry Pi
 
-Attach the USB storage that will be used to store the footage files, USB camera, and GPS receiver,
-and start up the Raspberry Pi.
+Attach the USB storage, USB camera, and GPS receiver. And start up the Raspberry Pi.
 
 If you have just installed the Raspberry Pi OS, it is recommended that you update your firmware and
 system.
@@ -102,9 +135,10 @@ $ vi hosts
 $ ansible-playbook -i hosts site.yml
 ```
 
-> You can also setup iVR without Ansible by manually following the steps described in
-> [`site.yml`](/torao/iVR/tree/main/site.yml). If you are doing this operation for the sake of
-> learning Linux, doing everything manually may help you understand the system.
+> It also possible to setup iVR by manually doing the steps described in 
+> [`site.yml`](/torao/iVR/tree/main/site.yml). In this case, you could use regular Linux instead of
+> Raspberry Pi. If you are doing this operation for the sake of learning Linux, doing everything
+> manually may help you understand the system.
 
 After Ansible has been successfully finished, making sure the camera and GPS receiver are connected
 and reboot your Raspberry Pi.
