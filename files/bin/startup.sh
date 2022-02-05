@@ -3,6 +3,7 @@
 
 COORDINATE_OPTIONS=""
 RECORD_OPTIONS=""
+GPS_OPTIONS=""
 
 # ---
 # [STORAGE OPTIONS]
@@ -43,6 +44,13 @@ RECORD_OPTIONS+=" --video-bitrate 768k"
 # RECORD_OPTIONS+=" --audio-sampling-rate 8k"
 
 # ---
+# [GPS OPTIONS]
+#
+
+# Set the GPS time as the exact one if local system clock hasn't synchronized with the NTP server.
+GPS_OPTIONS+=" --clock-adjust"
+
+# ---
 
 IVR_HOME=$(cd $(dirname $0)/.. && pwd)
 
@@ -65,6 +73,6 @@ then
   done
 fi
 
-python3 $IVR_HOME/bin/gpslog.py > /dev/null 2>&1 &
+python3 $IVR_HOME/bin/gpslog.py $GPS_OPTIONS > /dev/null 2>&1 &
 python3 $IVR_HOME/bin/coordinate.py $COORDINATE_OPTIONS &
 python3 $IVR_HOME/bin/record.py $RECORD_OPTIONS &

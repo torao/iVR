@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 DEFAULT_TELOP = "iVR 1.0"
 
@@ -73,6 +74,7 @@ def tracklog_file_name(date, sequence):
 # Perform an atomic update to the specified file.
 def write(file, text):
     i = 0
+    file_not_found_error = 0
     while True:
         seq = "" if i == 0 else ".{}".format(i)
         temp_file = "{}{}.tmp".format(file, seq)
@@ -80,6 +82,12 @@ def write(file, text):
             with open(temp_file, mode="x") as f:
                 f.write(text)
                 f.flush()
+        except FileNotFoundError:
+            # directory has not been mounted yet?
+            if file_not_found_error * 0.25 > 3:
+                raise
+            time.sleep(0.25)
+            file_not_found_error += 1
         except FileExistsError:
             i += 1
         else:
