@@ -150,7 +150,12 @@ def start_gps_recording(file, logdir, clock_adjust):
                     tm_text = "{}±{}".format(tm_text, int(ept))
                 if current_delta is None:
                     tm_text = "{}*".format(tm_text)
-            ivr.write(file, "{} {}".format(tm_text, text))
+            try:
+                ivr.write(file, "{} {}".format(tm_text, text))
+            except FileNotFoundError:
+                # TODO: The cause is unknown, but occurs rarely
+                # FileNotFoundError: [Errno 2] No such file or directory: '/opt/ivr/tmp/telop.txt.tmp'
+                ivr.log("WARN: fail to write GPS position")
 
             if i == 0 and clock_adjust and not localtime_synced:
                 if ds is not None and ds.TPV["ept"] is not None:

@@ -20,13 +20,14 @@
   - name: Install tools and libraries
     apt:
       name:
+        - ntp
         - autofs
         - fswebcam
         - ffmpeg
         - gpsd
         - gpsd-clients
         - python3-pip
-        - espeak
+        - espeak-ng
       state: present
     become: true
   - name: Install Python libraries

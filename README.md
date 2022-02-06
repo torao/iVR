@@ -22,23 +22,27 @@ streaming. Also, audio recording is still unstable and is turned off by default.
   * H.264 hardware encoder
   * Recommends quad-core CPU model
   * Latest [Raspberry Pi OS](https://www.raspberrypi.com/software/) (raspbian)
-    * With a few modifications, it may be available for other Linux operating systems
+    * It may be available for other Linux operating systems with a few modifications
 * USB storage:
-  * Formatted in FAT32
-  * Recommends 64GB+ (footage 60GB+, tracklog 2GB+)
-    * Requires about 280MB to 360MB per hour
-  * Flash memory or HDD is fine
+  * FAT32 format
+  * Recommends 64GB+ (requires about 280MB to 360MB per hour)
+  * Flash memory, SSD, HDD, etc.
 * Camera:
-  * 30fps+
-  * Recommends generic USB camera
-    * MIPI camera module is also possible by directly specifying the device file
+  * Many USB Web cameras will work, but you may need to modify the script in some cases
+  * MIPI camera module is also possible by directly specifying the device file
 * GPS receiver
-  * Needs to be recognizable by `gpsd`
+  * [Compatible with `gpsd`](https://gpsd.gitlab.io/gpsd/hardware.html)
   * Possible to use without GPS receiver, then the time and location information will not be
     displayed.
 * Speaker
   * Optional, but recommended to notify errors and drives
   * USB, 3.5mm jack, HDMI, or bluetooth
+
+Devices confirmed to work well:
+
+* **Raspberry Pi**: 1 Model B+, 3 Model B, 3 Model B+
+* **Storage**: XILOXIA 
+* **Camera**: Logitech C207n
 
 ## Features
 
@@ -55,9 +59,10 @@ size, they will be deleted in order starting with the oldest file.
 
 #### Footage File
 
-The footage AVI file is a format that allows you to play back the video up to the point just before
+The footage file is a AVI format that allows you to play back the video up to the point just before
 the interruption, even if there is a sudden power failure.
-This format can be played by Windows and Linux LVC. It can also be converted to MP4 as follows:
+This format can be played by Windows Standard Player and mac OS / Linux LVC. It can also be
+converted to MP4 by `ffmpeg` as follows:
 
 ```
 $ ffmpeg -i footage-xxx.avi footage-xxx.mp4
@@ -73,7 +78,12 @@ be fixed manually :)
 
 ### Headless and Offline Environment
 
-Errors and notifications are notified by sound.
+iVR assumes to be used headless, without a display or keyboard connected, in an environment that is
+not connected to the Internet.
+When an error or other event occurs, the speaker will be used to notify you. So it's recommended
+that you connect a small speaker.
+If you put a file named `announce.wav` in the `bin/` directory, that it will be played before every
+notification.
 
 Raspberry Pi doesn't have an RTC, so if it's not connected to a network (and cannot be synchronized
 with NTP server), the local time will deviate significantly when the power is turned on and off.

@@ -85,9 +85,11 @@ def write(file, text):
         except FileNotFoundError:
             # directory has not been mounted yet?
             if file_not_found_error * 0.25 > 3:
+                ivr.log("ERROR: FileNotFoundError was repeated: {}".format(file))
                 raise
             time.sleep(0.25)
             file_not_found_error += 1
+            i += 1
         except FileExistsError:
             i += 1
         else:
@@ -118,8 +120,16 @@ def remove_pid(prog=None):
 
 # Notify the user of the specified text.
 def beep(speech):
-    cmd = ["espeak", "-p", "30", "-g", "11", "notice. {}".format(speech)]
-    subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cmd = ""
+    announce = os.path.join(bin_dir(), "announce.wav")
+    if os.path.isfile(announce):
+        cmd += "aplay {}; ".format(announce)
+    else:
+        speech = "notice, {}".format(speech)
+    cmd += 'espeak-ng -p 30 -g 11 "{}"'.format(speech)
+    subprocess.Popen(
+        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True
+    )
 
 
 # Output the specified message as log to the standard output.
@@ -150,6 +160,11 @@ def home_dir():
         path = os.path.join(os.path.dirname(path), "..")
         _home_directory = os.path.abspath(path)
     return _home_directory
+
+
+# Refer to the binary directory.
+def bin_dir():
+    return os.path.join(home_dir(), "bin")
 
 
 # Refer to the temporary directory. Note that the files in this directory may not be persistent.
