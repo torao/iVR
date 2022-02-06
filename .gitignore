@@ -1,3 +1,6 @@
+files/bin/announce.wav
+hosts
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
