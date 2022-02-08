@@ -133,7 +133,6 @@ def start_camera_recording(
             proc.terminate()
         ivr.remove_pid("ffmpeg")
 
-    ivr.log("recorded the footage: %s" % output)
     return (proc.returncode, output)
 
 
@@ -312,8 +311,8 @@ if __name__ == "__main__":
             ret, file = start_camera_recording(
                 dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
             )
-            ivr.beep("The recording has been switched with return code {}.".format(ret))
-            ivr.log("end recording: {} -> {}".format(ret, file))
+            ivr.beep("successfully switching recording file")
+            ivr.log("the recording of {} has been terminated with: {}".format(ret, file))
 
     except ivr.TermException as e:
         ivr.log("IVR terminates the recording")

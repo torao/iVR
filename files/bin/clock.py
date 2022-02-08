@@ -1,5 +1,4 @@
 import datetime
-import os
 import re
 import statistics
 import subprocess
@@ -43,7 +42,6 @@ def correct_local_time(delta, ept):
     tm_local = now.strftime("%F %T")
     tm_gps = tm.strftime("%F %T")
     drift = "{:+,.3f}±{:.3f}".format(mean, stddev * 2)
-    ivr.log("INFO: correcting local time: {} {} -> {}".format(tm_local, drift, tm_gps))
     for cmd in [["sudo", "date", "-s", tm_text], ["sudo", "hwclock", "--systohc"]]:
         subprocess.run(
             cmd,
@@ -76,18 +74,25 @@ def is_localtime_sync_ntpd():
                 if len(seconds) != 0:
                     ivr.log("local clock is synchronized with the NTP server")
                     is_localtime_sync_ntpd.synchronized = True
-            is_localtime_sync_ntpd.thread.thread = None
+                else:
+                    ivr.log("local clock cannot synchronize with any NTP server")
+            else:
+                ivr.log("ERROR: {} => {}\n{}", cmd, result.returncode, result.stderr)
         except Exception as e:
             t = "".join(list(traceback.TracebackException.from_exception(e).format()))
             ivr.log("ERROR: {}".format(t))
+        finally:
+            is_localtime_sync_ntpd.thread.thread = None
 
     lc = is_localtime_sync_ntpd.last_check
     delta = None if lc is None else (datetime.datetime.now() - lc).total_seconds()
 
-    if is_localtime_sync_ntpd.synchronized and delta is not None and delta < 60 * 60:
+    if is_localtime_sync_ntpd.synchronized  and delta is not None and delta < 60 * 60:
         return True
 
     if (delta is None or delta > 5 * 60) and is_localtime_sync_ntpd.thread is None:
+        if is_localtime_sync_ntpd.last_check is None:
+            ivr.log("checking if local clock is synchronied with NTP server")
         is_localtime_sync_ntpd.last_check = datetime.datetime.now()
         is_localtime_sync_ntpd.thread = threading.Thread(target=check_ntp_synchronized)
         is_localtime_sync_ntpd.thread.start()
