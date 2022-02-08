@@ -54,23 +54,28 @@ GPS_OPTIONS+=" --clock-adjust"
 
 IVR_HOME=$(cd $(dirname $0)/.. && pwd)
 
-# Wait for autofs to start and /opt/ivr/data to be mounted.
-DIR_DATA_DEVICE=`readlink $IVR_HOME/data`
-if [ ! -z "$DIR_DATA_DEVICE" ]
+# Mount the data directory if it's not already mounted.
+DIR_MOUNTPOINT=`readlink $IVR_HOME/data`
+if [ ! -z "$DIR_MOUNTPOINT" ]
 then
-  I=0
-  while [ `df | grep $DIR_DATA_DEVICE | wc -l` -eq 0 ]
-  do
-    echo "$I[sec]: waiting autofs to mount $DIR_DATA_DEVICE -> $IVR_HOME/data..."
-    sleep 1
-    ls $IVR_HOME/data/ > /dev/null 2>&1
-    I=`expr $I + 1`
-    if [ $I -gt 180 ]
+  if [ ! -d "$DIR_MOUNTPOINT" ]
+  then
+    echo "Creating directory: $DIR_MOUNTPOINT"
+    sudo mkdir -p "$DIR_MOUNTPOINT"
+  fi
+  DEV_SDA1=`lsblk -p -l -n -o NAME | grep /dev/sda1 | wc -l`
+  if [ $DRV_SDA1 -eq 0 ]
+  then
+    espeak-ng "Caution, cannot find USB storage."
+    echo "WARN: Cannot find /dev/sda1 to use as data directory. Use an unmounted directory."
+  else
+    sudo mount -t auto /dev/sda1 "$DIR_MOUNTPOINT"
+    if [ $? -ne 0 ]
     then
-      espeak "caution, the IVR could not mount the data directory"
-      exit 1
+      espeak-ng "Caution, IVR could not mount the data directory."
+      echo "ERROR: iVR could not mount the data directory."
     fi
-  done
+  fi
 fi
 
 python3 $IVR_HOME/bin/gpslog.py $GPS_OPTIONS > /dev/null 2>&1 &

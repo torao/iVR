@@ -1,6 +1,7 @@
 # iVR: Multi-Purpose Video Recorder for Raspberry Pi
 
-The goal of iVR is to record long-term footage, either offline or online, with information acquired from various sensor devices. This repository contains scripts and setups to turn your Raspberry Pi
+The goal of iVR is to record long-term footage, either offline or online, with information acquired
+from various sensor devices. This repository contains scripts and setups to turn your Raspberry Pi
 into a homebrew footage recorder. iVR might be used for the following purposes:
 
 * **Security Camera**: for home, garage and warehouse
@@ -20,29 +21,36 @@ streaming. Also, audio recording is still unstable and is turned off by default.
 * Raspberry Pi or Raspberry Pi Zero:
   * 512MB+ memory
   * H.264 hardware encoder
-  * Recommends quad-core CPU model
+  * Single-core CPU will work but recommends quad-core model
   * Latest [Raspberry Pi OS](https://www.raspberrypi.com/software/) (raspbian)
     * It may be available for other Linux operating systems with a few modifications
 * USB storage:
-  * FAT32 or exFAT format
+  * FAT32 or exFAT formatted
   * Recommends 64GB+ (requires about 280MB to 360MB per hour)
+    * iVR log: 500MB max
+    * tracklog: 8GB max
   * Flash memory, SSD, HDD, etc.
+  * Use the one recognized as `/dev/sda1`
 * Camera:
   * Many USB Web cameras will work, but you may need to modify the script in some cases
   * MIPI camera module is also possible by directly specifying the device file
-* GPS receiver
+* GPS Receiver
+  * Optional
   * [Compatible with `gpsd`](https://gpsd.gitlab.io/gpsd/hardware.html)
   * Possible to use without GPS receiver, then the time and location information will not be
     displayed.
 * Speaker
-  * Optional, but recommended to notify errors and drives
+  * Optional, but recommended to notify system errors and drives
   * USB, 3.5mm jack, HDMI, or bluetooth
+* RTC Module
+  * Optional, but recommended not to deviate the clock or GPS positioning too much if you are going
+    to be using this offline or turning this on/off frequently.
 
 Devices confirmed to work well:
 
-* **Raspberry Pi**: 1 Model B+, 3 Model B, 3 Model B+
+* **Raspberry Pi**: 1B+, 3B, 3B+
 * **Storage**: XILOXIA 
-* **Camera**: Logitech C207n
+* **Camera**: Logitech C270n, C922n
 
 ## Features
 
@@ -91,9 +99,9 @@ The iVR has the ability to adjust the local time using the GPS time.
 
 ## Setup Your Raspberry Pi
 
-Attach the USB storage, USB camera, and GPS receiver. And start up the Raspberry Pi.
+Attach the USB storage, USB camera, and GPS receiver. And your Raspberry Pi.
 
-If you have just installed the Raspberry Pi OS, it is recommended that you update your firmware and
+If you have just installed the Raspberry Pi OS, it's recommended that you update your firmware and
 system.
 
 ```
@@ -103,6 +111,8 @@ $ sudo rpi-update
 
 The iVR uses Ansible for its setup. You can setup locally on the Raspberry Pi's own localhost, or
 remotely from Windows/macOS/Linux etc.
+
+### Configure Locally
 
 If you want to configure iVR on your Raspberry Pi local, you will need to install `git` and
 `ansible` first. After then, The `PATH` will be added in the `.profile` so that you may need to do
@@ -133,6 +143,8 @@ To configure iVR from the localhost of Raspberry Pi itself, run Ansible as follo
 $ ansible-playbook -i hosts --connection=local site.yml
 ```
 
+### Configure Remotely
+
 To configure iVR from the remote machine, configure the Raspberry Pi so that you can login using ssh,
 and replace `localhost` in the [`hosts`](/torao/iVR/tree/main/hosts) file with the hostname or IP
 address of the machine you want to setup.
@@ -145,10 +157,19 @@ $ vi hosts
 $ ansible-playbook -i hosts site.yml
 ```
 
+If the connection fails, run the following command to see if the connection is established correctly. You may need
+`sshpass` in your runtime environment.
+
+```
+$ ansible all -i hosts -m ping --ask-pass
+```
+
 > It also possible to setup iVR by manually doing the steps described in 
 > [`site.yml`](/torao/iVR/tree/main/site.yml). In this case, you could use regular Linux instead of
 > Raspberry Pi. If you are doing this operation for the sake of learning Linux, doing everything
 > manually may help you understand the system.
+
+### Check Your Environment
 
 After Ansible has been successfully finished, making sure the camera and GPS receiver are connected
 and reboot your Raspberry Pi.
@@ -165,6 +186,10 @@ pi  780  1  0 01:08 ?  00:00:00 python3 /opt/ivr/bin/record.py
 In addition, recording should have started and footage files and logs should have been generated in
 the `/opt/ivr/data/` directory. If one of the python processes fails to start, please refer to
 `/opt/ivr/data/ivr-YYYYMMDD.log` or `~/ivr-boot.log`.
+
+```
+$ espeak-ng "hello, world"
+```
 
 ## System Structure
 

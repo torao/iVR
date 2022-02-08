@@ -42,7 +42,8 @@ def start_camera_recording(
     now = datetime.datetime.now()
     end = datetime.datetime(now.year, now.month, now.day, now.hour) + delta
     interval = (end - now).seconds
-    if interval == 0:
+    if interval < 60:
+        # to avoid a recording time of less than one minute
         # to avoid running with -t 0 in cases like now=20:59:59.940
         end = end + delta
         interval = (end - now).seconds
@@ -132,6 +133,11 @@ def start_camera_recording(
         if proc.returncode is None:
             proc.terminate()
         ivr.remove_pid("ffmpeg")
+
+    try:
+        proc.wait(10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
     return (proc.returncode, output)
 
@@ -311,8 +317,8 @@ if __name__ == "__main__":
             ret, file = start_camera_recording(
                 dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
             )
-            ivr.beep("successfully switching recording file")
-            ivr.log("the recording of {} has been terminated with: {}".format(ret, file))
+            ivr.beep("switching the recording destination")
+            ivr.log("the recording of {} has been terminated with: {}".format(file, ret))
 
     except ivr.TermException as e:
         ivr.log("IVR terminates the recording")
