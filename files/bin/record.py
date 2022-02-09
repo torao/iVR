@@ -64,12 +64,15 @@ def start_camera_recording(
     command.extend(["-t", str(interval)])
 
     # video input options
-    # -vsync: When a frame isn't received from the camera at the specified frame rate, it
-    #         deletes or duplicates the frame to achieve the specified frame rate.
+    # -vsync:   When a frame isn't received from the camera at the specified frame rate, it
+    #           deletes or duplicates the frame to achieve the specified frame rate.
+    # -ss 0:00: To avoid the error "application provided invalid, non monotonically increasing dts
+    #           to muxer in stream" in Logitech C922n.
     command.extend(["-f", "v4l2"])
     command.extend(["-thread_queue_size", "8192"])
     command.extend(["-s", "640x360"])
     command.extend(["-framerate", "30"])
+    command.extend(["-ss", "0:00"])
     command.extend(["-i", dev_video])
 
     # audio input options
