@@ -24,7 +24,7 @@ streaming. Also, audio recording is still unstable and is turned off by default.
   * Latest [Raspberry Pi OS](https://www.raspberrypi.com/software/) (raspbian)
     * It may be available for other Linux operating systems with a few modifications
 * USB storage:
-  * FAT32 format
+  * FAT32 or exFAT format
   * Recommends 64GB+ (requires about 280MB to 360MB per hour)
   * Flash memory, SSD, HDD, etc.
 * Camera:
