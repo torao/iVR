@@ -9,19 +9,21 @@
     storage_vendor: "{{ansible_facts['devices']['sda']['vendor']}}"
     storage_model: "{{ansible_facts['devices']['sda']['model']}}"
   tasks:
-  - name: Update apt repositories
+  - name: "Print Facts"
+    debug:
+      msg: "{{ansible_facts['devices']}}"
+  - name: "Update apt repositories"
     apt:
       update_cache: yes
     become: true
-  - name: Upgrade local libraries
+  - name: "Upgrade local libraries"
     apt:
       upgrade: yes
     become: true
-  - name: Install tools and libraries
+  - name: "Install tools and libraries"
     apt:
       name:
         - ntp
-        - autofs
         - fswebcam
         - ffmpeg
         - gpsd
@@ -30,23 +32,14 @@
         - espeak-ng
       state: present
     become: true
-  - name: Install Python libraries
+  - name: "Install Python libraries"
     pip:
       name:
         - gps3
         - tzlocal
 
   # *******************************
-  - name: Configure /tmp to be mounted with tmpfs
-    mount:
-      src: tmpfs
-      path: /tmp
-      opts: defaults,size=32m
-      state: mounted
-      fstype: tmpfs
-    become: true
-
-  - name: Configure /tmp/ivr to be mounted with tmpfs
+  - name: "Configure /tmp/ivr to be mounted with tmpfs"
     ansible.posix.mount:
       src: tmpfs
       path: /tmp/ivr
@@ -54,34 +47,17 @@
       state: mounted
       fstype: tmpfs
     become: true
+  - name: "Create mount-point of data directory: /mnt/sda1"
+    file:
+      path: "/mnt/sda1"
+      state: directory
+      owner: root
+      group: root
+      mode: 0777
+    become: true
 
   # *******************************
-  - name: "Make sure that the USB storage is attached to /dev/sda1"
-    assert:
-      that:
-        - storage_uuid != ""
-      fail_msg: "The data storage cannot be detected as /dev/sda1, please connect a USB storage device."
-      success_msg: "Use the storage {{storage_vendor}} {{storage_model}} {{storage_size}} detected in /dev/sda1."
-  - name: "Configure auto-mount: /dev/disk/by-uuid/{{storage_uuid}} => {{ivr_home}}/data"
-    copy:
-      content: "{{item.content}}"
-      dest: "{{item.dest}}"
-    with_items:
-      # NOTE: The directory pointed to by *.autofs will be forced to be root:root and no files or
-      # directories can be created. Don't specifiy {{ivr_home}} for this reason.
-      - { content: "/mnt /etc/auto.mnt", dest: "/etc/auto.master.d/mnt.autofs" }
-      - { content: "sda1 -fstype=vfat,rw,umask=000 :/dev/disk/by-uuid/{{storage_uuid}}", dest: "/etc/auto.mnt" }
-    become: true
-    register: result
-  - name: "Restart autofs"
-    shell: 
-      cmd: "systemctl restart autofs --now"
-    become: true
-    when: 
-      - result.changed
-
-  # *******************************
-  - name: Create the home directory and related directories
+  - name: "Create the home directory and related directories"
     file:
       path: "{{item}}"
       state: directory
@@ -92,7 +68,7 @@
     loop:
       - "{{ivr_home}}"
       - "{{ivr_home}}/bin"
-  - name: Create symbolic links
+  - name: "Create symbolic links"
     file:
       path: "{{item.path}}"
       src: "{{item.src}}"
@@ -103,7 +79,7 @@
       - { path: "{{ivr_home}}/data", src: /mnt/sda1 }
 
   # *******************************
-  - name: Copy the executable files
+  - name: "Copy the executable files"
     copy:
       src: "{{item}}"
       dest: "{{ivr_home}}/bin"
@@ -113,7 +89,7 @@
       - "files/bin/*.sh"
       - "files/bin/*.wav"
 
-  - name: Register the script to cron to be started at boot
+  - name: "Register the script to cron to be started at boot"
     cron:
       name: "iVR auto start"
       special_time: reboot

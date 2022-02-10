@@ -62,18 +62,27 @@ then
   then
     echo "Creating directory: $DIR_MOUNTPOINT"
     sudo mkdir -p "$DIR_MOUNTPOINT"
+    sudo chmod 777 "$DIR_MOUNTPOINT"
   fi
-  DEV_SDA1=`lsblk -p -l -n -o NAME | grep /dev/sda1 | wc -l`
-  if [ $DRV_SDA1 -eq 0 ]
+  DEV_NAME=/dev/`basename $DIR_MOUNTPOINT`
+  if [ `lsblk -p -l -n -o NAME | grep "$DEV_NAME" | wc -l` -eq 0 ]
   then
-    espeak-ng "Caution, cannot find USB storage."
-    echo "WARN: Cannot find /dev/sda1 to use as data directory. Use an unmounted directory."
-  else
-    sudo mount -t auto /dev/sda1 "$DIR_MOUNTPOINT"
+    # Error if the destination device does not exist.
+    espeak-ng "Error, cannot find USB storage."
+    echo "ERROR: Cannot find $DEV_NAME to use as data directory. Use an unmounted directory."
+    exit 1
+  elif [ `df | grep "$DIR_MOUNTPOINT" | wc -l` -eq 0 ]
+  then
+    # Mount DEV_NAME.
+    sudo mount -t exfat,vfat -o umask=0000 "$DEV_NAME" "$DIR_MOUNTPOINT"
     if [ $? -ne 0 ]
     then
-      espeak-ng "Caution, IVR could not mount the data directory."
+      espeak-ng "Error, IVR could not mount the data directory."
       echo "ERROR: iVR could not mount the data directory."
+      exit 1
+    else
+      echo "$DEV_NAME is now mounted in $DIR_MOUNTPOINT."
+      echo "data directory $IVR_HOME/data is available."
     fi
   fi
 fi
