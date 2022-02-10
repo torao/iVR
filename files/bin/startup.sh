@@ -13,11 +13,11 @@ GPS_OPTIONS=""
 
 # Total size limit for footage files. If the total size exceeds this capacity, the oldest files
 # will be deleted. A footage file per hour is about 250MB to 360MB.
-COORDINATE_OPTIONS+=" --limit-footage 60G"
+#COORDINATE_OPTIONS+=" --limit-footage 100G"
 
 # Total size limit for tracklog files. If the total size exceeds this capacity, the oldest files
 # will be deleted.
-COORDINATE_OPTIONS+=" --limit-tracklog 2G"
+#COORDINATE_OPTIONS+=" --limit-tracklog 5G"
 
 # ---
 # [VIDEO OPTIONS]

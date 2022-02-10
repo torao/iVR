@@ -8,6 +8,7 @@ import datetime
 import os
 import re
 import signal
+import subprocess
 import sys
 import time
 import traceback
@@ -68,10 +69,46 @@ def check_for_updates_to_the_telop(file):
     return
 
 
+# Retrieve the partition size of the data directory.
+def partition_size(dir):
+
+    # resolve symbolic-link (max 10 hop)
+    dir = str(os.path.abspath(dir))
+    i = 0
+    while os.path.islink(dir):
+        stdout = execute(["readlink", dir])
+        if stdout is None:
+            break
+        dir = stdout.strip()
+        i += 1
+        if i == 10:
+            return None
+
+    # get the size of the device being mounted
+    stdout = execute(["df", "-k"])
+    if stdout is None:
+        return None
+    contains = lambda p: p == dir or p == "/" or dir.startswith(p + "/")
+    es = [l.split() for l in stdout.strip().splitlines()[1:]]
+    es = [(e[5], e[1], e[0]) for e in es if contains(e[5])]
+    path, size, dev = max(es, key=lambda e: len(e[0]))
+    return (dev, int(size) * 1024)
+
+
+def execute(cmd):
+    ret = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True)
+    if ret.returncode != 0:
+        ivr.log(
+            "ERROR: failed to execute: {} => {}\n{}".format(
+                cmd, ret.returncode, ret.stderr
+            )
+        )
+        return None
+    return ret.stdout.decode("utf-8")
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Convert and remove recorded footage files"
-    )
+    parser = argparse.ArgumentParser(description="Cleanup recorded footage files")
     parser.add_argument(
         "-d",
         "--dir",
@@ -94,8 +131,7 @@ if __name__ == "__main__":
         "-lf",
         "--limit-footage",
         metavar="CAPACITY",
-        default="60G",
-        help="Total size of footage file to be retained, such as 32G, 32000M (default: 60G)",
+        help="Total size of footage file to be retained, such as 32G, 32000M (default: depends on storage capacity)",
     )
     parser.add_argument(
         "-lt",
@@ -123,15 +159,21 @@ if __name__ == "__main__":
         args = parser.parse_args()
         dir = args.dir
         telop = args.telop
-        limit_footage = ivr.without_aux_unit(args.limit_footage)
         limit_tracklog = ivr.without_aux_unit(args.limit_tracklog)
-        limit_log = ivr.without_aux_unit("2M")
+        limit_log = ivr.without_aux_unit("5M")
         interval = args.interval
 
-        total_used = limit_footage + limit_tracklog + limit_log
+        limit_footage = args.limit_footage
+        if limit_footage is not None:
+            limit_footage = ivr.without_aux_unit(limit_footage)
+        else:
+            dev, size = partition_size(dir)
+            ivr.log("device capacity: {} ({}B)".format(dev, ivr.with_aux_unit(size)))
+            limit_footage = max(0, int(size * 0.95) - (limit_tracklog + limit_log))
+
         ivr.log(
-            "available storage: {} = {}:footage + {}:tracklog + {}:log".format(
-                ivr.with_aux_unit(total_used),
+            "available storage: {} = {}B(footage) + {}B(tracklog) + {}B(log)".format(
+                ivr.with_aux_unit(limit_footage + limit_tracklog + limit_log),
                 ivr.with_aux_unit(limit_footage),
                 ivr.with_aux_unit(limit_tracklog),
                 ivr.with_aux_unit(limit_log),
@@ -145,13 +187,13 @@ if __name__ == "__main__":
             time.sleep(interval)
 
     except ivr.TermException as e:
-        ivr.log("IVR terminates the cleaning")
-        ivr.beep("cleaning has stopped")
+        ivr.log("IVR terminates the coordinator")
+        ivr.beep("coordinator has stopped")
     except Exception as e:
         t = "".join(list(traceback.TracebackException.from_exception(e).format()))
         ivr.log("ERROR: {}".format(t))
-        ivr.log("IVR terminates the cleaning by an error")
-        ivr.beep("cleaning has stopped due to an error")
+        ivr.log("IVR terminates the coordinator by an error")
+        ivr.beep("coordinator has stopped due to an error")
         sys.exit(1)
     finally:
         ivr.remove_pid()
