@@ -49,7 +49,7 @@ streaming. Also, audio recording is still unstable and is turned off by default.
 Devices confirmed to work well:
 
 * **Raspberry Pi**: 1B+, 3B, 3B+
-* **Storage**: XILOXIA 
+* **Storage**: KIOXIA TransMemory 
 * **Camera**: Logitech C270n, C922n
 
 ## Features

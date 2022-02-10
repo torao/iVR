@@ -318,7 +318,9 @@ if __name__ == "__main__":
                 dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
             )
             ivr.beep("switching the recording destination")
-            ivr.log("the recording of {} has been terminated with: {}".format(file, ret))
+            ivr.log(
+                "the recording of {} has been terminated with: {}".format(file, ret)
+            )
 
     except ivr.TermException as e:
         ivr.log("IVR terminates the recording")

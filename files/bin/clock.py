@@ -87,7 +87,7 @@ def is_localtime_sync_ntpd():
     lc = is_localtime_sync_ntpd.last_check
     delta = None if lc is None else (datetime.datetime.now() - lc).total_seconds()
 
-    if is_localtime_sync_ntpd.synchronized  and delta is not None and delta < 60 * 60:
+    if is_localtime_sync_ntpd.synchronized and delta is not None and delta < 60 * 60:
         return True
 
     if (delta is None or delta > 5 * 60) and is_localtime_sync_ntpd.thread is None:
