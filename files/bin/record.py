@@ -317,7 +317,7 @@ if __name__ == "__main__":
             ret, file = start_camera_recording(
                 dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
             )
-            ivr.beep("switching the recording destination")
+            ivr.beep("")
             ivr.log(
                 "the recording of {} has been terminated with: {}".format(file, ret)
             )

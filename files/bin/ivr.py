@@ -140,7 +140,8 @@ def beep(speech):
         cmd += "aplay {}; ".format(announce)
     else:
         speech = "notice, {}".format(speech)
-    cmd += 'espeak-ng -p 30 -g 11 "{}"'.format(speech)
+    if len(speech) != 0:
+        cmd += 'espeak-ng -p 30 -g 11 "{}"'.format(speech)
     subprocess.Popen(
         cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True
     )
