@@ -123,7 +123,7 @@ def remove_pid(prog=None):
 def execute(cmd):
     ret = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True)
     if ret.returncode != 0:
-        ivr.log(
+        log(
             "ERROR: failed to execute: {} => {}\n{}".format(
                 cmd, ret.returncode, ret.stderr
             )

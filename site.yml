@@ -23,6 +23,7 @@
   - name: "Install tools and libraries"
     apt:
       name:
+        - ntp
         - ffmpeg
         - gpsd
         - gpsd-clients
