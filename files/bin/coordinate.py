@@ -76,7 +76,7 @@ def partition_size(dir):
     dir = str(os.path.abspath(dir))
     i = 0
     while os.path.islink(dir):
-        stdout = execute(["readlink", dir])
+        stdout = ivr.execute(["readlink", dir])
         if stdout is None:
             break
         dir = stdout.strip()
@@ -85,7 +85,7 @@ def partition_size(dir):
             return None
 
     # get the size of the device being mounted
-    stdout = execute(["df", "-k"])
+    stdout = ivr.execute(["df", "-k"])
     if stdout is None:
         return None
     contains = lambda p: p == dir or p == "/" or dir.startswith(p + "/")
@@ -93,18 +93,6 @@ def partition_size(dir):
     es = [(e[5], e[1], e[0]) for e in es if contains(e[5])]
     path, size, dev = max(es, key=lambda e: len(e[0]))
     return (dev, int(size) * 1024)
-
-
-def execute(cmd):
-    ret = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True)
-    if ret.returncode != 0:
-        ivr.log(
-            "ERROR: failed to execute: {} => {}\n{}".format(
-                cmd, ret.returncode, ret.stderr
-            )
-        )
-        return None
-    return ret.stdout.decode("utf-8")
 
 
 if __name__ == "__main__":

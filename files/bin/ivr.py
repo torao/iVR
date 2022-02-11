@@ -118,6 +118,20 @@ def remove_pid(prog=None):
     return
 
 
+# Execute the command and return its standard output. If the execution fails, it returns None.
+# Pipes and redirects are not available because this isn't a shell invocation.
+def execute(cmd):
+    ret = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True)
+    if ret.returncode != 0:
+        ivr.log(
+            "ERROR: failed to execute: {} => {}\n{}".format(
+                cmd, ret.returncode, ret.stderr
+            )
+        )
+        return None
+    return ret.stdout.decode("utf-8")
+
+
 # Notify the user of the specified text.
 def beep(speech):
     cmd = ""

@@ -127,7 +127,7 @@ def start_gps_recording(file, logdir, clock_adjust):
     delta = datetime.timedelta()
     ept = 0.0
     while True:
-        localtime_synced = clock.is_localtime_sync_ntpd()
+        localtime_trusted = clock.can_localtime_trust()
 
         # obtain gps position
         current_delta, text, ds = position(socket)
@@ -141,7 +141,7 @@ def start_gps_recording(file, logdir, clock_adjust):
         # to reduce the load, a few seconds are slipped without actually being acquired from GPS
         for i in range(ACQUISION_INTERVAL_SECONDS):
             now = datetime.datetime.now()
-            if localtime_synced:
+            if localtime_trusted:
                 tm_text = now.strftime("%F %T")
             else:
                 now = now + delta
@@ -157,7 +157,7 @@ def start_gps_recording(file, logdir, clock_adjust):
                 # FileNotFoundError: [Errno 2] No such file or directory: '/opt/ivr/tmp/telop.txt.tmp'
                 ivr.log("WARN: fail to write GPS position")
 
-            if i == 0 and clock_adjust and not localtime_synced:
+            if i == 0 and clock_adjust and not localtime_trusted:
                 if ds is not None and ds.TPV["ept"] is not None:
                     ept = float(ds.TPV["ept"])
                     if current_delta is not None:
