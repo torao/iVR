@@ -2,8 +2,8 @@
 # Script to be executed at system startup.
 
 declare -a rec_options=()
-COORDINATE_OPTIONS=""
-GPS_OPTIONS=""
+declare -a crd_options=()
+declare -a gps_options=()
 
 # ---
 # [STORAGE OPTIONS]
@@ -13,11 +13,11 @@ GPS_OPTIONS=""
 
 # Total size limit for footage files. If the total size exceeds this capacity, the oldest files
 # will be deleted. A footage file per hour is about 250MB to 360MB.
-#COORDINATE_OPTIONS+=" --limit-footage 100G"
+#crd_options+=("--limit-footage" "100G")
 
 # Total size limit for tracklog files. If the total size exceeds this capacity, the oldest files
 # will be deleted.
-#COORDINATE_OPTIONS+=" --limit-tracklog 5G"
+#crd_options+=("--limit-tracklog" "5G")
 
 # ---
 # [VIDEO OPTIONS]
@@ -30,14 +30,14 @@ GPS_OPTIONS=""
 #rec_options+=("--video" "/dev/video0")
 
 # Video resolution, which can use HxV notations such as 1280x720, 720p, HD, etc.
-#rec_options+=("--video-resolution" "864x480")
+rec_options+=("--video-resolution" "864x480")
 
 # Frames per second of video.
-#rec_options+=("--video-fps" "30")
+rec_options+=("--video-fps" "30")
 
 # Bit rate of the video. Specify a higher value when the video quality is poor relative to the
 # camera quality.
-#rec_options+=("--video-bitrate" "768k")
+rec_options+=("--video-bitrate" "768k")
 
 # Input format from camera.
 # Note that the specific resolution and FPS depend on the input format.
@@ -62,7 +62,7 @@ GPS_OPTIONS=""
 #
 
 # Set the GPS time as the exact one if local system clock hasn't synchronized with the NTP server.
-GPS_OPTIONS+=" --clock-adjust"
+gps_options+=("--clock-adjust")
 
 # ---
 
@@ -108,6 +108,6 @@ then
   fi
 fi
 
-python3 $IVR_HOME/bin/gpslog.py $GPS_OPTIONS > /dev/null 2>&1 &
-python3 $IVR_HOME/bin/coordinate.py $COORDINATE_OPTIONS &
+python3 $IVR_HOME/bin/gpslog.py ${gps_options[@]} > /dev/null 2>&1 &
+python3 $IVR_HOME/bin/coordinate.py ${crd_options[@]} &
 python3 $IVR_HOME/bin/record.py ${rec_options[@]} &
