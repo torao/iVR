@@ -64,26 +64,33 @@ then
     sudo mkdir -p "$DIR_MOUNTPOINT"
     sudo chmod 777 "$DIR_MOUNTPOINT"
   fi
-  DEV_NAME=/dev/`basename $DIR_MOUNTPOINT`
-  if [ `lsblk -p -l -n -o NAME | grep "$DEV_NAME" | wc -l` -eq 0 ]
+
+  # Detect the destination storage device.
+  DEV_STRAGES=`lsblk -p -l -o NAME | tail -n +2 | grep '/dev/sd[a-z][1-9]' | head -n 1`
+  if [ -z "$DEV_STRAGES" ]
   then
     # Error if the destination device does not exist.
     espeak-ng "Error, cannot find USB storage."
-    echo "ERROR: Cannot find $DEV_NAME to use as data directory. Use an unmounted directory."
+    echo "ERROR: Cannot find $DEV_STRAGES to use as data directory. Use an unmounted directory."
     exit 1
-  elif [ `df | grep "$DIR_MOUNTPOINT" | wc -l` -eq 0 ]
-  then
-    # Mount DEV_NAME.
-    sudo mount -t exfat,vfat -o umask=0000 "$DEV_NAME" "$DIR_MOUNTPOINT"
-    if [ $? -ne 0 ]
-    then
-      espeak-ng "Error, IVR could not mount the data directory."
-      echo "ERROR: iVR could not mount the data directory."
-      exit 1
-    else
-      echo "$DEV_NAME is now mounted in $DIR_MOUNTPOINT."
-      echo "data directory $IVR_HOME/data is available."
-    fi
+  else
+    for dev in $DEV_STRAGES
+    do
+      # If the device is not mounted anywhere, mount it to mountpoint.
+      if [ `df | grep "$dev" | wc -l` -eq 0 ]
+      then
+        sudo mount -t exfat,vfat -o umask=0000 "$dev" "$DIR_MOUNTPOINT"
+        if [ $? -ne 0 ]
+        then
+          espeak-ng "Error, IVR could not mount the data directory."
+          echo "ERROR: iVR could not mount the data directory."
+          exit 1
+        fi
+        echo "$dev is now mounted in $DIR_MOUNTPOINT."
+        echo "data directory $IVR_HOME/data is available."
+        break
+      fi
+    done
   fi
 fi
 

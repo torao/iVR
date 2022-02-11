@@ -8,6 +8,7 @@
     storage_size: "{{ansible_facts['devices']['sda']['partitions']['sda1']['size']}}"
     storage_vendor: "{{ansible_facts['devices']['sda']['vendor']}}"
     storage_model: "{{ansible_facts['devices']['sda']['model']}}"
+    storage_mountpoint: "/mnt/ivr-data"
   tasks:
   - name: "Print Facts"
     debug:
@@ -46,9 +47,9 @@
       state: mounted
       fstype: tmpfs
     become: true
-  - name: "Create mount-point of data directory: /mnt/sda1"
+  - name: "Create mount-point of data directory: {{storage_mountpoint}}"
     file:
-      path: "/mnt/sda1"
+      path: "{{storage_mountpoint}}"
       state: directory
       owner: root
       group: root
@@ -74,8 +75,8 @@
       state: link
     become: true
     loop:
-      - { path: "{{ivr_home}}/tmp", src: /tmp/ivr }
-      - { path: "{{ivr_home}}/data", src: /mnt/sda1 }
+      - { path: "{{ivr_home}}/tmp", src: "/tmp/ivr" }
+      - { path: "{{ivr_home}}/data", src: "{{storage_mountpoint}}" }
 
   # *******************************
   - name: "Copy the executable files"
