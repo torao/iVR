@@ -30,7 +30,15 @@ def timeout_handler(signum, frame):
 # Start recording the footage.
 # Returns the FFmpeg exit-code and the name of the generated footage file.
 def start_camera_recording(
-    dev_video, dev_audio, telop_file, dir, sampling_rate, video_bitrate
+    dev_video,
+    dev_audio,
+    telop_file,
+    dir,
+    video_resolution,
+    video_fps,
+    video_input_format,
+    video_bitrate,
+    sampling_rate,
 ):
     global ffmpeg_process
 
@@ -71,8 +79,10 @@ def start_camera_recording(
     #           to muxer in stream" in Logitech C922n.
     command.extend(["-f", "v4l2"])
     command.extend(["-thread_queue_size", "8192"])
-    command.extend(["-s", "640x360"])
-    command.extend(["-framerate", "30"])
+    command.extend(["-s", video_resolution])
+    command.extend(["-framerate", video_fps])
+    if video_input_format is not None:
+        command.extend(["-input_format", video_input_format])
     command.extend(["-ss", "0:00"])
     command.extend(["-i", dev_video])
 
@@ -172,6 +182,47 @@ def new_footage_file(dir, now, ext):
         return path
 
 
+SCREEN_SIZE_ALIASES = {
+    "320x180": ["QVGA"],
+    "400x240": ["WQVGA"],
+    "352x288": ["CIF"],
+    "640x200": ["CGA"],
+    "480x320": ["HVGA"],
+    "640x350": ["EGA"],
+    "640x400": ["DCGA"],
+    "640x480": ["VGA"],
+    "720x480": ["DVD", "NTSC480"],
+    "720x483": ["NTSC"],
+    "800x480": ["WVGA"],
+    "854x480": ["FWVGA"],
+    "864x480": ["FWVGA+"],
+    "800x600": ["SVGA"],
+    "1024x480": ["UWVGA"],
+    "1024x576": ["WSVGA"],
+    "1280x600": ["UWSVGA"],
+    "1024x768": ["XGA"],
+    "1280x720": ["720p", "HD", "HDTV"],
+    "1280x768": ["WXGA"],
+    "1152x864": ["XGA+"],
+    "1280x800": ["WXGA"],
+    "1366x768": ["FWXGA"],
+    "1280x1024": ["SXGA"],
+    "1280x1050": ["SXGA+"],
+    "1920x1080": ["1080p", "1080i", "FHD", "Full HD", "2k"],
+    "3840x2160": ["2160p", "4k"],
+}
+
+# Converts the specified resolution name to WIDTHxHEIGHT notation.
+def screen_resolution(name):
+    if re.fullmatch(r"\d+x\d+", name) is not None:
+        return name
+    for resolution, aliases in SCREEN_SIZE_ALIASES.items():
+        for alias in aliases:
+            if alias.upper() == name.upper():
+                return resolution
+    return None
+
+
 # Returns the device with the lowest number among the USB connected video devices from captured
 # video device list using v4l2-ctl --list-devices.
 # If no such device was detected, returns `None`.
@@ -266,6 +317,26 @@ if __name__ == "__main__":
         help="Camera device to be used, such as /dev/video0 (default: auto detect)",
     )
     parser.add_argument(
+        "-vr",
+        "--video-resolution",
+        metavar="RESOLUTION",
+        default="640x360",
+        help="Screen resolution for video recording, such as 1280x720, 720p, or HD (default: 640x360)",
+    )
+    parser.add_argument(
+        "-vf",
+        "--video-fps",
+        metavar="FPS",
+        default="30",
+        help="Frames per second for video recording, such as 30, 60 (default: 30)",
+    )
+    parser.add_argument(
+        "-vif",
+        "--video-input-format",
+        metavar="FORMAT",
+        help="Input format from camera, such as yuyv422, mjpeg (default: depends on runtime). See `ffmpeg -f v4l2 -list_formats all -i /dev/video0` for valid values.",
+    )
+    parser.add_argument(
         "-vbr",
         "--video-bitrate",
         metavar="BITRATE",
@@ -296,10 +367,21 @@ if __name__ == "__main__":
         dir = args.dir
         telop = args.telop
         dev_video = args.video
+        video_resolution = args.video_resolution
+        video_fps = args.video_fps
+        video_input_format = args.video_input_format
+        video_bitrate = args.video_bitrate
         with_audio = args.with_audio
         sampling_rate = args.audio_sampling_rate
-        video_bitrate = args.video_bitrate
 
+        # resolve screen resolution name
+        res = screen_resolution(video_resolution)
+        if res is None:
+            print("ERROR: invalid screen resolution: {}".format(video_resolution))
+            exit(1)
+        video_resolution = res
+
+        # auto-detect video and audio devices
         if dev_video is None:
             dev_video_title, dev_video = detect_default_usb_camera()
             ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
@@ -315,7 +397,15 @@ if __name__ == "__main__":
         ivr.beep("IVR starts to recording.")
         while True:
             ret, file = start_camera_recording(
-                dev_video, dev_audio, telop, dir, sampling_rate, video_bitrate
+                dev_video,
+                dev_audio,
+                telop,
+                dir,
+                video_resolution,
+                video_fps,
+                video_input_format,
+                video_bitrate,
+                sampling_rate,
             )
             ivr.beep("")
             ivr.log(

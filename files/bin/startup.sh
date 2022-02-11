@@ -1,8 +1,8 @@
 #!/bin/bash
 # Script to be executed at system startup.
 
+declare -a rec_options=()
 COORDINATE_OPTIONS=""
-RECORD_OPTIONS=""
 GPS_OPTIONS=""
 
 # ---
@@ -21,15 +21,29 @@ GPS_OPTIONS=""
 
 # ---
 # [VIDEO OPTIONS]
+# 
+# Selecting high quality or Motion-JPEG may increase the CPU usage significantly.
 #
 
 # Video device to be used for video recording explicitly. Specify this when auto-detection doesn't
 # recognize the device correctly, or when using a camera module instead of a USB camera.
-# RECORD_OPTIONS+=" --video /dev/video0"
+#rec_options+=("--video" "/dev/video0")
+
+# Video resolution, which can use HxV notations such as 1280x720, 720p, HD, etc.
+#rec_options+=("--video-resolution" "864x480")
+
+# Frames per second of video.
+#rec_options+=("--video-fps" "30")
 
 # Bit rate of the video. Specify a higher value when the video quality is poor relative to the
 # camera quality.
-RECORD_OPTIONS+=" --video-bitrate 768k"
+#rec_options+=("--video-bitrate" "768k")
+
+# Input format from camera.
+# Note that the specific resolution and FPS depend on the input format.
+# See `v4l2-ctl --list-formats-ext` for the relationship between resolution, FPS and input format.
+# See `ffmpeg -f v4l2 -list_formats all -i /dev/video0` for valid values.
+#rec_options+=("--video-input-format" "mjpeg")
 
 # ---
 # [AUDIO OPTIONS]
@@ -37,11 +51,11 @@ RECORD_OPTIONS+=" --video-bitrate 768k"
 # Audio recording is turned off by default, and the state is still in an unstable beta version.
 
 # Enable this option if you want to record audio.
-# RECORD_OPTIONS+=" --with-audio"
+#rec_options+=("--with-audio")
 
 # Audio sampling rate. Specify a higher value if the audio is poor relative to the microphone
 # quality.
-# RECORD_OPTIONS+=" --audio-sampling-rate 8k"
+#rec_options+=("--audio-sampling-rate" "8k")
 
 # ---
 # [GPS OPTIONS]
@@ -96,4 +110,4 @@ fi
 
 python3 $IVR_HOME/bin/gpslog.py $GPS_OPTIONS > /dev/null 2>&1 &
 python3 $IVR_HOME/bin/coordinate.py $COORDINATE_OPTIONS &
-python3 $IVR_HOME/bin/record.py $RECORD_OPTIONS &
+python3 $IVR_HOME/bin/record.py ${rec_options[@]} &
