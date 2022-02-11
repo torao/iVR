@@ -19,6 +19,11 @@ function shutdown(){
 }
 
 shutdown gpslog.py
+sleep 0.6
 shutdown coordinate.py
+sleep 0.6
 shutdown record.py
-killall ffmpeg > /dev/null
+if [ `ps -ef | grep ffmpeg | grep -v grep | wc -l` -ne 0 ]
+then
+  killall ffmpeg > /dev/null 2>&1
+fi
