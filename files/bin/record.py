@@ -58,11 +58,18 @@ def start_camera_recording(
     t1 = now.strftime("%F %T")
     t2 = end.time()
 
+    # scale text size according to resolution
+    m = re.fullmatch(r"(\d+)[xX](\d+)", video_resolution)
+    height = int(m.group(2))
+    text_resolution = height / 360
+    font_size = int(text_resolution * 12)
+    p16 = int(text_resolution * 16)
+    p4 = int(text_resolution * 4)
     telop = [
         "format=pix_fmts=yuv420p",
-        "drawbox=y=ih-16:w=iw:h=16:t=fill:color=black@0.4",
-        "drawtext=textfile={}:fontsize=12:reload=1:fontcolor=#DDDDDD:x=4:y=h-12".format(
-            telop_file
+        "drawbox=y=ih-{0}:w=iw:h={0}:t=fill:color=black@0.4".format(p16),
+        "drawtext=textfile={0}:fontsize={1}:reload=1:fontcolor=#DDDDDD:x={2}:y=h-{3}".format(
+            telop_file, font_size, p4, font_size
         ),
     ]
 
@@ -190,7 +197,7 @@ SCREEN_SIZE_ALIASES = {
     "480x320": ["HVGA"],
     "640x350": ["EGA"],
     "640x400": ["DCGA"],
-    "640x480": ["VGA"],
+    "640x480": ["VGA", "480p"],
     "720x480": ["DVD", "NTSC480"],
     "720x483": ["NTSC"],
     "800x480": ["WVGA"],
