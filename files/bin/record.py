@@ -95,12 +95,12 @@ def start_camera_recording(
     command.extend(["-i", dev_video])
 
     # audio input options
-    # -channel_layout: to avoid warning message "Guessed Channel Layout for Input Stream #1.0 : mono"
+    # [mono/stereo] The "-ac 1" and "-channel_layout mono" are added to avoid warning message
+    # "Guessed Channel Layout for Input Stream #1.0 : mono", but they cause an error when C922n
+    # uses a stereo microphone, so they aren't fixed to mono but left to auto-recognition.
     if dev_audio is not None:
         command.extend(["-f", "alsa"])
         command.extend(["-thread_queue_size", "8192"])
-        command.extend(["-ac", "1"])  # the number of channels: 1=mono
-        command.extend(["-channel_layout", "mono"])
         if sampling_rate is not None:
             command.extend(["-ar", sampling_rate])  # audio sampling rate
         command.extend(["-i", "hw:{}".format(dev_audio)])
@@ -136,7 +136,7 @@ def start_camera_recording(
 
         ivr.save_pid("ffmpeg", proc.pid)
 
-        ivr.log("start recording: {} => ".format(" ".join(proc.args), proc.pid))
+        ivr.log("start recording[{}]: {}".format(proc.pid, " ".join(proc.args)))
         ivr.log("  to {} between {} and {} ({} sec)".format(output, t1, t2, interval))
         line = proc.stderr.readline()
         while line:
@@ -353,9 +353,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-a",
-        "--with-audio",
+        "--without-audio",
         action="store_true",
-        help="(beta) Record audio with video (default: no audio)",
+        help="Don't record audio along with video (default: with audio)",
     )
     parser.add_argument(
         "-as",
@@ -379,7 +379,7 @@ if __name__ == "__main__":
         video_fps = args.video_fps
         video_input_format = args.video_input_format
         video_bitrate = args.video_bitrate
-        with_audio = args.with_audio
+        without_audio = args.without_audio
         sampling_rate = args.audio_sampling_rate
 
         # resolve screen resolution name
@@ -394,7 +394,7 @@ if __name__ == "__main__":
             dev_video_title, dev_video = detect_default_usb_camera()
             ivr.log("detected USB camera: {} = {}".format(dev_video, dev_video_title))
         dev_audio = None
-        if with_audio:
+        if not without_audio:
             dev_autio_title, dev_audio = detect_default_usb_audio()
             ivr.log("detected Audio: {} = {}".format(dev_audio, dev_autio_title))
 
@@ -404,6 +404,7 @@ if __name__ == "__main__":
 
         ivr.beep("IVR starts to recording.")
         while True:
+            start = datetime.datetime.now()
             ret, file = start_camera_recording(
                 dev_video,
                 dev_audio,
