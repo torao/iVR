@@ -7,6 +7,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 import traceback
 
 import ivr
@@ -418,6 +419,12 @@ if __name__ == "__main__":
             ivr.log(
                 "the recording of {} has been terminated with: {}".format(file, ret)
             )
+
+            # to avoid reporting error consecutively in a short period of time
+            if ret != 0:
+                interval = max(0, 3 - (datetime.datetime.now() - start).total_seconds())
+                if interval > 0:
+                    time.sleep(interval)
 
     except ivr.TermException as e:
         ivr.log("IVR terminates the recording")
