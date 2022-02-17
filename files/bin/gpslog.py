@@ -96,7 +96,8 @@ def position(socket):
         now = datetime.datetime.now()
         if new_data:
             ds.unpack(new_data)
-            gps_time = parse_time(ds.TPV["time"])
+            tm = ds.TPV["time"]
+            gps_time = parse_time(tm)
             if gps_time is not None:
                 delta = gps_time - now.astimezone(TZ)
                 lat = latlon_text(ds.TPV["lat"], "N", "S")
@@ -106,7 +107,7 @@ def position(socket):
                 speed = speed_text(ds.TPV["speed"])
                 pos = "{}/{}  {}  {}:{}".format(lat, lon, alt, dir, speed)
                 return (delta, pos, ds)
-            elif (now - begin).seconds > 1:
+            elif tm is not None:
                 return (None, "GPS positioning...", None)
         elif (now - begin).seconds > 25:
             break
