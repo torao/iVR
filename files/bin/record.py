@@ -180,12 +180,12 @@ def new_footage_file(dir, now, ext):
             with open(path, mode="x") as f:
                 pass
         except FileExistsError:
-            i += 1
+            i = (i + 1) % 1000000
             continue
 
         # write sequence to control file
         with open(sequence_file, mode="w") as f:
-            f.write(str(i + 1))
+            f.write(str((i + 1) % 1000000))
 
         return path
 
