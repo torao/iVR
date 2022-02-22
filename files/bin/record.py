@@ -73,6 +73,8 @@ def start_camera_recording(
             telop_file, font_size, p4, font_size
         ),
     ]
+    if video_fps is not None:
+        telop.extend(["framerate={}".format(video_fps)])
 
     command = ["ffmpeg"]
     command.extend(["-y"])
@@ -88,7 +90,6 @@ def start_camera_recording(
     command.extend(["-f", "v4l2"])
     command.extend(["-thread_queue_size", "8192"])
     command.extend(["-s", video_resolution])
-    command.extend(["-framerate", video_fps])
     if video_input_format is not None:
         command.extend(["-input_format", video_input_format])
     command.extend(["-ss", "0:00"])
@@ -118,9 +119,19 @@ def start_camera_recording(
     elif FOOTAGE_FILE_EXT == "avi":
         command.extend(["-c:v", "h264_v4l2m2m"])
         command.extend(["-pix_fmt", "yuv420p"])
+        # NOTE: If the OS hangs-up or repeatedly stops with the following errors, increase the value
+        # of -qmax or comment it out.
+        # > [h264_v4l2m2m @ 0x55a384e750] === poll unexpected TIMEOUT: events=0x147, cap buffers=4
+        # command.extend(["-qmin", "0"])
+        # command.extend(["-qmax", "51"])
+    if video_bitrate is not None:
+        # NOTE: By making buffer size (in bit) to be same as bit rate, it'll be flushed once a
+        # second. This may cause underflow, but is necessary to save last-minute records in an
+        # environment with frequent power off.
+        command.extend(["-b:v", video_bitrate])
+        command.extend(["-bufsize", video_bitrate])
 
     # output file
-    command.extend(["-b:v", video_bitrate])
     command.extend([output])
 
     proc = subprocess.Popen(
@@ -144,7 +155,7 @@ def start_camera_recording(
             line = proc.stderr.readline()
 
     except TimeoutException:
-        ivr.log("WARNING: FFmpeg didn't finish after {} sec; aborting".format(interval))
+        ivr.log("INFO: FFmpeg didn't finish after {} sec; sending SIGTERM".format(interval))
     finally:
         ffmpeg_process = None
         signal.alarm(0)
@@ -335,8 +346,7 @@ if __name__ == "__main__":
         "-vf",
         "--video-fps",
         metavar="FPS",
-        default="30",
-        help="Frames per second for video recording, such as 30, 60 (default: 30)",
+        help="Output frames per second for video recording, such as 30, 60 (default: depends on runtime)",
     )
     parser.add_argument(
         "-vif",
@@ -348,8 +358,8 @@ if __name__ == "__main__":
         "-vbr",
         "--video-bitrate",
         metavar="BITRATE",
-        default="768k",
-        help="Bitrate for video recording (default: 768k)",
+        default="2M",
+        help="Bitrate for video recording (default: 2M)",
     )
     parser.add_argument(
         "-a",
@@ -361,7 +371,7 @@ if __name__ == "__main__":
         "-as",
         "--audio-sampling-rate",
         metavar="SAMPLING_RATE",
-        help="Sampling rate for audio recording (default: 8k)",
+        help="Sampling rate for audio recording (default: depends on runtime)",
     )
 
     try:
@@ -388,6 +398,9 @@ if __name__ == "__main__":
             print("ERROR: invalid screen resolution: {}".format(video_resolution))
             exit(1)
         video_resolution = res
+
+        if len(video_bitrate) == 0:
+            video_bitrate = None
 
         # auto-detect video and audio devices
         if dev_video is None:

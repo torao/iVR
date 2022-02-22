@@ -8,11 +8,14 @@ declare -a gps_options=()
 # ---
 # [STORAGE OPTIONS]
 # 
-# Adjust the following two values considering the size of the USB storage attached to the system.
-# Set the total size to be abount 1.5GB less than its actual space.
+# The iVR automatically deletes outdated data considering the capacity of the USB storage.
+# If you want to limit the available space with a fixed value instead of using all of the storage
+# capacity, please set the following values.
+# No matter how small the value you specify, two files will always be retained: the latest data
+# currently being recorded and the previous data.
 
-# Total size limit for footage files. If the total size exceeds this capacity, the oldest files
-# will be deleted. A footage file per hour is about 250MB to 360MB.
+# Total size limit for video footage files. If the total size exceeds this capacity, the oldest
+# files will be deleted. A footage file per hour is about 250MB to 360MB.
 #crd_options+=("--limit-footage" "100G")
 
 # Total size limit for tracklog files. If the total size exceeds this capacity, the oldest files
@@ -22,8 +25,8 @@ declare -a gps_options=()
 # ---
 # [VIDEO OPTIONS]
 # 
-# Selecting high quality or Motion-JPEG may increase the CPU usage significantly.
-#
+# The following options work with FFmpeg. Please refer to the log file to see what FFmpeg commands
+# are being executed and if any of the options you need are missing, please modify record.py.
 
 # Video device to be used for video recording explicitly. Specify this when auto-detection doesn't
 # recognize the device correctly, or when using a camera module instead of a USB camera.
@@ -32,17 +35,18 @@ declare -a gps_options=()
 # Video resolution, which can use HxV notations such as 1280x720, 720p, HD, etc.
 rec_options+=("--video-resolution" "864x480")
 
-# Frames per second of video.
-rec_options+=("--video-fps" "30")
+# Output frame-rate of video.
+#rec_options+=("--video-fps" "30")
 
 # Bit rate of the video. Specify a higher value when the video quality is poor relative to the
 # camera quality.
-rec_options+=("--video-bitrate" "768k")
+#rec_options+=("--video-bitrate" "4M")
 
 # Input format from camera.
 # Note that the specific resolution and FPS depend on the input format.
 # See `v4l2-ctl --list-formats-ext` for the relationship between resolution, FPS and input format.
 # See `ffmpeg -f v4l2 -list_formats all -i /dev/video0` for valid values.
+# Selecting high quality or Motion-JPEG may increase the CPU usage significantly.
 #rec_options+=("--video-input-format" "mjpeg")
 
 # ---
@@ -50,8 +54,8 @@ rec_options+=("--video-bitrate" "768k")
 #
 # Audio recording is turned off by default, and the state is still in an unstable beta version.
 
-# Enable this option if you want to record audio.
-#rec_options+=("--with-audio")
+# Enable this option if you don't want to record audio.
+#rec_options+=("--without-audio")
 
 # Audio sampling rate. Specify a higher value if the audio is poor relative to the microphone
 # quality.
