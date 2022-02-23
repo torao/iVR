@@ -155,7 +155,7 @@ def start_camera_recording(
             line = proc.stderr.readline()
 
     except TimeoutException:
-        ivr.log("INFO: FFmpeg didn't finish after {} sec; sending SIGTERM".format(interval))
+        ivr.log("FFmpeg didn't finish after {} sec; sending SIGTERM".format(interval))
     finally:
         ffmpeg_process = None
         signal.alarm(0)

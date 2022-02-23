@@ -32,7 +32,7 @@ declare -a gps_options=()
 # recognize the device correctly, or when using a camera module instead of a USB camera.
 #rec_options+=("--video" "/dev/video0")
 
-# Video resolution, which can use HxV notations such as 1280x720, 720p, HD, etc.
+# Video resolution, which can use WIDTHxHEIGHT notations such as 1280x720, 720p, HD, etc.
 rec_options+=("--video-resolution" "864x480")
 
 # Output frame-rate of video.
