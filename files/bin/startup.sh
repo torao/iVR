@@ -61,6 +61,10 @@ rec_options+=("--video-resolution" "864x480")
 # quality.
 #rec_options+=("--audio-sampling-rate" "8k")
 
+# Disable the noise reduction filter for audio. If it's used in a noise-free environment, disabling
+# this may improve the quality of the audio.
+#rec_options+=("--without-audio-noise-reduction")
+
 # ---
 # [GPS OPTIONS]
 #

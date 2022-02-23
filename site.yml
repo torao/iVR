@@ -13,70 +13,70 @@
   - name: "Print Facts"
     debug:
       msg: "{{ansible_facts['devices']}}"
-  - name: "Update apt repositories"
-    apt:
-      update_cache: yes
-    become: true
-  - name: "Upgrade local libraries"
-    apt:
-      upgrade: yes
-    become: true
-  - name: "Install tools and libraries"
-    apt:
-      name:
-        - ntp
-        - ffmpeg
-        - gpsd
-        - gpsd-clients
-        - python3-pip
-        - espeak-ng
-      state: present
-    become: true
-  - name: "Install Python libraries"
-    pip:
-      name:
-        - gps3
-        - tzlocal
+  # - name: "Update apt repositories"
+  #   apt:
+  #     update_cache: yes
+  #   become: true
+  # - name: "Upgrade local libraries"
+  #   apt:
+  #     upgrade: yes
+  #   become: true
+  # - name: "Install tools and libraries"
+  #   apt:
+  #     name:
+  #       - ntp
+  #       - ffmpeg
+  #       - gpsd
+  #       - gpsd-clients
+  #       - python3-pip
+  #       - espeak-ng
+  #     state: present
+  #   become: true
+  # - name: "Install Python libraries"
+  #   pip:
+  #     name:
+  #       - gps3
+  #       - tzlocal
 
-  # *******************************
-  - name: "Configure /tmp/ivr to be mounted with tmpfs"
-    ansible.posix.mount:
-      src: tmpfs
-      path: /tmp/ivr
-      opts: defaults,size=1m
-      state: mounted
-      fstype: tmpfs
-    become: true
-  - name: "Create mount-point of data directory: {{storage_mountpoint}}"
-    file:
-      path: "{{storage_mountpoint}}"
-      state: directory
-      owner: root
-      group: root
-      mode: 0777
-    become: true
+  # # *******************************
+  # - name: "Configure /tmp/ivr to be mounted with tmpfs"
+  #   ansible.posix.mount:
+  #     src: tmpfs
+  #     path: /tmp/ivr
+  #     opts: defaults,size=1m
+  #     state: mounted
+  #     fstype: tmpfs
+  #   become: true
+  # - name: "Create mount-point of data directory: {{storage_mountpoint}}"
+  #   file:
+  #     path: "{{storage_mountpoint}}"
+  #     state: directory
+  #     owner: root
+  #     group: root
+  #     mode: 0777
+  #   become: true
 
-  # *******************************
-  - name: "Create the home directory and related directories"
-    file:
-      path: "{{item}}"
-      state: directory
-      owner: pi
-      group: pi
-      mode: 0755
-    become: true
-    loop:
-      - "{{ivr_home}}"
-      - "{{ivr_home}}/bin"
-  - name: "Create symbolic links"
-    file:
-      path: "{{item.path}}"
-      src: "{{item.src}}"
-      state: link
-    become: true
-    loop:
-      - { path: "{{ivr_home}}/tmp", src: "/tmp/ivr" }
-      - { path: "{{ivr_home}}/data", src: "{{storage_mountpoint}}" }
+  # # *******************************
+  # - name: "Create the home directory and related directories"
+  #   file:
+  #     path: "{{item}}"
+  #     state: directory
+  #     owner: pi
+  #     group: pi
+  #     mode: 0755
+  #   become: true
+  #   loop:
+  #     - "{{ivr_home}}"
+  #     - "{{ivr_home}}/bin"
+  # - name: "Create symbolic links"
+  #   file:
+  #     path: "{{item.path}}"
+  #     src: "{{item.src}}"
+  #     state: link
+  #   become: true
+  #   loop:
+  #     - { path: "{{ivr_home}}/tmp", src: "/tmp/ivr" }
+  #     - { path: "{{ivr_home}}/data", src: "{{storage_mountpoint}}" }
 
   # *******************************
   - name: "Copy the executable files"
@@ -89,8 +89,8 @@
       - "files/bin/*.sh"
       - "files/bin/*.wav"
 
-  - name: "Register the script to cron to be started at boot"
-    cron:
-      name: "iVR auto start"
-      special_time: reboot
-      job: "{{ivr_home}}/bin/startup.sh > /home/pi/ivr-boot.log 2>&1"
+  # - name: "Register the script to cron to be started at boot"
+  #   cron:
+  #     name: "iVR auto start"
+  #     special_time: reboot
+  #     job: "{{ivr_home}}/bin/startup.sh > /home/pi/ivr-boot.log 2>&1"
