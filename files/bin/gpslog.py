@@ -51,7 +51,7 @@ def parse_time(tm):
 
 def latlon_text(ll, ne, sw):
     if ll is None or ll == "n/a" or abs(float(ll)) <= 0.000001:
-        return "---.----"
+        return None
     else:
         ll = float(ll)
         return "{}{:.4f}".format(ne if ll >= 0.0 else sw, abs(ll))
@@ -60,19 +60,17 @@ def latlon_text(ll, ne, sw):
 def altitude_text(alt):
     if alt is not None and alt != "n/a":
         alt = float(alt)
-        alt = "{:.1f}".format(alt)
+        return "{:.1f}m".format(alt)
     else:
-        alt = "--.-"
-    return "{}m".format(alt)
+        return None
 
 
 def speed_text(speed):
     if speed is not None and speed != "n/a":
         speed = float(speed) * 3600 / 1000
-        speed = "{:.1f}".format(speed)
+        return "{:.1f}km/h".format(speed)
     else:
-        speed = "--.-"
-    return "{}km/h".format(speed)
+        return None
 
 
 def direction(dir):
@@ -85,12 +83,15 @@ def direction(dir):
                 break
         return "{:>3}".format(label)
     else:
-        return "---"
+        return None
 
 
 def position(socket):
     # see also: https://gpsd.gitlab.io/gpsd/gpsd_json.html
     ds = gps3.DataStream()
+    delta, lat, lon, alt, dir, speed = None, None, None, None, None, None
+    time_detected = 0
+    time_not_available = 0
     begin = datetime.datetime.now()
     for new_data in socket:
         now = datetime.datetime.now()
@@ -100,18 +101,44 @@ def position(socket):
             gps_time = parse_time(tm)
             if gps_time is not None:
                 delta = gps_time - now.astimezone(TZ)
-                lat = latlon_text(ds.TPV["lat"], "N", "S")
-                lon = latlon_text(ds.TPV["lon"], "E", "W")
-                alt = altitude_text(ds.TPV["alt"])
-                dir = direction(ds.TPV["track"])
-                speed = speed_text(ds.TPV["speed"])
-                pos = "{}/{}  {}  {}:{}".format(lat, lon, alt, dir, speed)
-                return (delta, pos, ds)
+                lat = latlon_text(ds.TPV["lat"], "N", "S") if lat is None else lat
+                lon = latlon_text(ds.TPV["lon"], "E", "W") if lon is None else lon
+                alt = altitude_text(ds.TPV["alt"]) if alt is None else alt
+                dir = direction(ds.TPV["track"]) if dir is None else dir
+                speed = speed_text(ds.TPV["speed"]) if speed is None else speed
+                time_not_available = 0
+                time_detected += 1
             elif tm is not None:
-                return (None, "GPS positioning...", None)
+                # if TPV.time presents but the value is "n/a"
+                time_not_available += 1
+                if time_not_available >= 3:
+                    break
+            else:
+                # probably it was not TPV
+                continue
+
+            # finish if enough data has been acquired or the specified number of times has been exceeded.
+            if (
+                lat is not None
+                and lon is not None
+                and alt is not None
+                and dir is not None
+                and speed is not None
+            ) or time_detected >= 5:
+                break
         elif (now - begin).seconds > 25:
-            break
-    return (None, "Lost GPS signal", None)
+            return (None, "Lost GPS signal", None)
+
+    if delta is None:
+        return (None, "GPS positioning...", None)
+
+    lat = "---.----" if lat is None else lat
+    lon = "---.----" if lon is None else lon
+    alt = "--.-m" if alt is None else alt
+    dir = "---" if dir is None else dir
+    speed = "--.-km/h" if speed is None else speed
+    pos = "{}/{}  {}  {}:{}".format(lat, lon, alt, dir, speed)
+    return (delta, pos, ds)
 
 
 # Start GPS positioning.
